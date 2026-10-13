@@ -111,3 +111,21 @@ private final class CommandLog: @unchecked Sendable {
         all.append(commands)
     }
 }
+
+struct FolderCleanerTests {
+    @Test func deletesReadOnlyTreeLikeTheGoModuleCache() throws {
+        let temp = try TempFolder()
+        defer {
+            _ = try? CommandRunner.run("/bin/chmod", ["-R", "u+w", temp.path], timeoutSeconds: 10)
+            temp.remove()
+        }
+        try temp.makeFile("cache/mod/pkg/file.go", bytes: 10)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: temp.sub("cache/mod/pkg"))
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: temp.sub("cache/mod"))
+
+        try FolderCleaner.clean(temp.sub("cache"), mode: .deleteNow)
+
+        #expect(FolderCleaner.isClean(temp.sub("cache")))
+        #expect(PathTools.isDirectory(temp.sub("cache")))
+    }
+}

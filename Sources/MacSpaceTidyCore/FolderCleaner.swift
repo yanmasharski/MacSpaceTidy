@@ -3,6 +3,8 @@ import Foundation
 /// Cleans a folder by deleting what is inside it. The folder itself stays, so links to it,
 /// its permissions, and its attributes stay too. A plain file is deleted.
 public enum FolderCleaner {
+    private static let UNLOCK_TIMEOUT_SECONDS = 900.0
+
     public static func clean(_ path: String, mode: DeleteMode) throws {
         let isFolder = PathTools.isDirectory(path) && !PathTools.isSymlink(path)
         for target in isFolder ? PathTools.children(of: path) : [path] {
@@ -16,8 +18,19 @@ public enum FolderCleaner {
         case .trash:
             try FileManager.default.trashItem(at: url, resultingItemURL: nil)
         case .deleteNow:
-            try FileManager.default.removeItem(at: url)
+            do {
+                try FileManager.default.removeItem(at: url)
+            } catch {
+                // Read-only trees (the Go module cache) and locked files refuse deletion until unlocked.
+                makeWritable(path)
+                try FileManager.default.removeItem(at: url)
+            }
         }
+    }
+
+    private static func makeWritable(_ path: String) {
+        _ = CommandRunner.run("/bin/chmod", ["-R", "u+w", path], timeoutSeconds: UNLOCK_TIMEOUT_SECONDS)
+        _ = CommandRunner.run("/usr/bin/chflags", ["-R", "nouchg", path], timeoutSeconds: UNLOCK_TIMEOUT_SECONDS)
     }
 
     /// True when the folder is empty or the path is gone.
