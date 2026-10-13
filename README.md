@@ -172,7 +172,7 @@ swift build -c release
 | ↑ ↓ | Move |
 | Space | Check or uncheck an item or a whole category |
 | Enter | Open or close a category |
-| m | Switch a big cache between Move and Delete |
+| m | Switch a big cache between Move and Delete, or move any big item by hand |
 | b | Move a moved folder back |
 | x | Fix the selected problem |
 | d | Choose the external disk |

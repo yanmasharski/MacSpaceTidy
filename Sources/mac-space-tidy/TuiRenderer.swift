@@ -172,6 +172,8 @@ extension TuiApp {
             } else {
                 suffix += plan.effectiveAction(item, hasDisk: true) == .move ? "  [Move]" : "  [Delete]"
             }
+        } else if item.offersManualMove && usableDiskRoot != nil {
+            suffix += "  (m: move by hand)"
         }
         if item.needsAdmin {
             suffix += "  (admin)"

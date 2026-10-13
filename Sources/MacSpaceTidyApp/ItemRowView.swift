@@ -77,7 +77,7 @@ struct ItemRowView: View {
                     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.linkTarget ?? item.path)])
                 }
             }
-            if item.category == .largeUnknown {
+            if item.offersManualMove {
                 Button("Move to External Disk…") {
                     model.refreshDiskChoices()
                     isManualMoveAsked = true
@@ -158,8 +158,11 @@ struct ItemRowView: View {
         guard model.usableDiskRoot != nil else {
             return "Choose an external disk in Settings (Cmd-,) first."
         }
-        let warning = "This folder is not in the catalog, so nobody checked that its app works from an external disk. "
-            + "The link breaks when the disk is not connected."
+        let warning = item.category == .largeUnknown
+            ? "This folder is not in the catalog, so nobody checked that its app works from an external disk. "
+                + "The link breaks when the disk is not connected."
+            : "This is a cache. Some apps delete and recreate their cache folder, and that removes the link. "
+                + "The link also breaks when the disk is not connected."
         if let refusal = model.moveRefusal(item.with(action: .move)) {
             return warning + "\n\nIt cannot be moved now: \(refusal)"
         }
@@ -169,7 +172,7 @@ struct ItemRowView: View {
     private var disabledReason: String {
         switch item.action {
         case .cleanInApp: return "Clean this inside the app."
-        case .info: return "Information only. Right-click to move it by hand."
+        case .info: return item.offersManualMove ? "Information only. Right-click to move it by hand." : "Information only."
         case .delete, .deleteSimulatorRuntime, .move, .moveBack, .cleanExternal, .deleteExternalCopy, .never: return ""
         }
     }

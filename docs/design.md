@@ -89,8 +89,12 @@ Terminal keys: arrows move, space toggles, Enter expands, `s` scans, `o` optimiz
 
 ### Move or delete (decided 2026-10-13, round 5)
 
-- Big developer caches have a catalog flag `canMove` (uv, npm, Gradle, NuGet, Bun, DerivedData,
-  iOS DeviceSupport, Homebrew cache). Their row has a "Move / Delete" switch.
+- Big tool caches have a catalog flag `canMove` in `catalog.json` (uv, npm, Gradle, NuGet, Bun, Yarn Berry, Coursier,
+  Ivy, Cargo, Go modules, Maven, Dart, Playwright, Puppeteer, DerivedData, iOS DeviceSupport, Xcode documentation,
+  Android build cache, Homebrew cache). Their row has a "Move / Delete" switch. Add the flag to a catalog entry to offer it.
+- Any other big item (1 GB or more, delete action, no admin) and every big unknown folder can be moved by hand:
+  right-click → "Move to External Disk…" in the app, key `m` in the terminal. A warning explains the risk
+  (the app may recreate the folder and remove the link).
 - Moving is preferred: when an external disk is chosen, these items default to Move. Without a disk they are deleted.
 - Small app caches in `~/Library/Caches/*` are delete only: many apps delete and recreate their cache folder,
   which silently replaces the link with a normal folder.

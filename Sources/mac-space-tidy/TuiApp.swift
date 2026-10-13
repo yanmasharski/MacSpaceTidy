@@ -207,15 +207,30 @@ final class TuiApp {
     }
 
     private func switchMoveOrDelete(_ row: TuiRow?) {
-        guard case .item(let item) = row, item.canMove else {
-            message = "Only big developer caches can be moved instead of deleted."
+        guard case .item(let item) = row else {
+            message = "Select an item first."
             return
         }
         guard usableDiskRoot != nil else {
             message = "Choose an external disk first: press d."
             return
         }
-        plan.setMove(item, plan.effectiveAction(item, hasDisk: true) != .move)
+        if item.canMove {
+            plan.setMove(item, plan.effectiveAction(item, hasDisk: true) != .move)
+        } else if item.offersManualMove {
+            askManualMove(item)
+        } else {
+            message = "This item cannot be moved."
+        }
+    }
+
+    private func askManualMove(_ item: ScanItem) {
+        let why = item.category == .largeUnknown
+            ? "It is not in the catalog, so nobody checked that its app works from an external disk."
+            : "Some apps delete and recreate their cache folder, and that removes the link."
+        question = Question(text: "Move \(item.title) to the external disk now? \(why) (y/n)") { [weak self] in
+            self?.startOptimize([item.with(action: .move)])
+        }
     }
 
     private func askMoveBack(_ row: TuiRow?) {

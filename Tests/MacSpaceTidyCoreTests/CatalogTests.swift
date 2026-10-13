@@ -18,6 +18,14 @@ struct CatalogTests {
         }
     }
 
+    @Test func bigToolCachesOfferMove() throws {
+        let catalog = try Catalog.loadBundled()
+        let movable = Set(catalog.entries.filter(\.canMove).map(\.id))
+
+        #expect(movable.isSuperset(of: ["uv-cache", "yarn-berry-cache", "coursier-cache", "ivy-cache", "android-build-cache", "xcode-doc-cache"]))
+        #expect(!movable.contains("library-caches"))
+    }
+
     @Test func childrenPatternSkipsChildWithOwnEntry() throws {
         let temp = try TempFolder()
         defer { temp.remove() }

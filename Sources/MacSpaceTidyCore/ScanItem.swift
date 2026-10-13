@@ -44,6 +44,18 @@ public struct ScanItem: Sendable, Identifiable {
         return path
     }
 
+    /// Big folders can be moved by hand, even when the catalog has no Move option for them.
+    public static let MANUAL_MOVE_MIN_BYTES: Int64 = 1_000_000_000
+
+    /// True when the user may move this folder to an external disk by hand (right-click → Move).
+    /// Unknown big folders, and big deletable items without their own Move option.
+    public var offersManualMove: Bool {
+        if category == .largeUnknown {
+            return true
+        }
+        return action == .delete && !needsAdmin && !canMove && size.bytes >= ScanItem.MANUAL_MOVE_MIN_BYTES
+    }
+
     /// The same item with another action. Used for a manual move of an unknown folder.
     public func with(action: ItemAction) -> ScanItem {
         return ScanItem(
