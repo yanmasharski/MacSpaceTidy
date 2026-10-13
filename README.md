@@ -66,6 +66,8 @@ Other ways may suit you better. This tool is about my way.
   You choose: to the Trash (you can restore) or delete now. It knows about 110 cache and toolchain locations
   (Xcode, simulators, Node, Python, Rust, Go, JVM, Flutter, editors, AI tools). A cache of an app you used in the
   last two days is not checked by default: the app may be using it.
+- **Tidies Downloads.** Old installers, archives, and files you have not opened for months, one by one.
+  They are never checked for you and always go to the Trash. Or move them to the external disk.
 - **Moves big folders.** To your external SSD, behind a link. Big developer caches can be moved or deleted —
   moving is the default when a disk is set.
 - **Moves them back.** One button per moved folder.

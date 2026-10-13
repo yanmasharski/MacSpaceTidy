@@ -31,6 +31,11 @@ public struct ScanOptions: Sendable {
         self.measuresMovedItems = false
     }
 
+    /// The folder with your downloads. Its old entries are listed one by one, never as a whole.
+    public var downloadsPath: String {
+        return (home as NSString).appendingPathComponent("Downloads")
+    }
+
     /// One JSON line per move. Lives on the internal disk; the catalog protects it.
     public var journalPath: String {
         return (home as NSString).appendingPathComponent("Library/Application Support/MacSpaceTidy/moves.jsonl")

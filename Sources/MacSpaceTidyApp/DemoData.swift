@@ -16,7 +16,7 @@ enum DemoData {
         model.diskChoices = [DiskChoice(path: DISK_ROOT, name: "Backup SSD", fileSystem: "apfs", freeBytes: 520 * GB, problem: nil)]
         model.moveDiskRoot = DISK_ROOT
         model.plan = PlanSelection.defaults(for: report.items, hasDisk: true)
-        model.initiallyExpanded = [.developer, .external]
+        model.initiallyExpanded = [.downloads, .developer]
     }
 
     private static func item(
@@ -44,13 +44,16 @@ enum DemoData {
             item("~/.cargo/registry", .developer, .delete, 3_100 * MB, checked: true, canMove: true, changedDaysAgo: 9, reason: "Downloaded Rust crates. Cargo downloads them again."),
             item("~/.gradle/caches", .developer, .delete, 4_200 * MB, checked: true, canMove: true, changedDaysAgo: 20, reason: "Gradle dependency and build cache. Gradle downloads it again."),
             item("/Library/Developer/CoreSimulator/Caches", .developer, .delete, 3_800 * MB, admin: true, reason: "System cache of iOS simulators. The system rebuilds it. Needs the admin password."),
+            item("~/Downloads/screen-recording.mp4", .downloads, .trashOnly, 1_200 * MB, risk: .medium, canMove: true, changedDaysAgo: 210, reason: DownloadsScanner.reason(kind: .other, days: 210)),
+            item("~/Downloads/Installer-3.2.dmg", .downloads, .trashOnly, 640 * MB, risk: .medium, canMove: true, changedDaysAgo: 75, reason: DownloadsScanner.reason(kind: .installer, days: 75)),
+            item("~/Downloads/old-dataset.zip", .downloads, .trashOnly, 380 * MB, risk: .medium, canMove: true, changedDaysAgo: 140, reason: DownloadsScanner.reason(kind: .archive, days: 140)),
             item("~/Library/Application Support/Steam", .apps, .move, 14 * GB, reason: "Steam data and games. Works from an external disk. Quit Steam first."),
             item("~/Library/Application Support/com.example.WineBottles", .apps, .move, 6_500 * MB, risk: .medium, reason: "Wine bottles. Large. Move, do not delete: it holds installed Windows apps."),
             item("iOS 18.5 (22F77)", .simulators, .deleteSimulatorRuntime, 8_840 * MB, risk: .medium, reason: "iOS simulator runtime. Keep the versions you test on. Xcode can download it again."),
             item("iOS 26.0 (23A340)", .simulators, .deleteSimulatorRuntime, 8_070 * MB, risk: .medium, reason: "iOS simulator runtime. Keep the versions you test on. Xcode can download it again."),
             item("~/Library/Containers", .cleanInApp, .cleanInApp, 9_160 * MB, risk: .high, reason: "Data of sandboxed apps. Deleting it breaks apps. Clean it inside each app or uninstall the app."),
             item("~/Library/Mail", .cleanInApp, .cleanInApp, 3_040 * MB, risk: .high, reason: "Mail messages. Remove accounts or mailboxes in the Mail app."),
-            item("~/Downloads", .largeUnknown, .info, 11_600 * MB, risk: .high, reason: "Large folder not in the catalog. Check what it is before you delete or move it."),
+            item("~/Projects/old-renders", .largeUnknown, .info, 11_600 * MB, risk: .high, reason: "Large folder not in the catalog. Check what it is before you delete or move it."),
             item("~/Movies", .largeUnknown, .info, 6_200 * MB, risk: .high, reason: "Large folder not in the catalog. Check what it is before you delete or move it."),
             item("~/.cache/uv", .alreadyMoved, .moveBack, 38_470 * MB, changedDaysAgo: 2, target: moved + "/.cache/uv", reason: "Already moved to an external disk. You can move it back."),
             item("~/Library/Application Support/Cursor", .alreadyMoved, .moveBack, 21_600 * MB, changedDaysAgo: 0.1, target: moved + "/Library/Application Support/Cursor", reason: "Already moved to an external disk. You can move it back."),

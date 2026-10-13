@@ -82,8 +82,12 @@ public struct Optimizer: Sendable {
         if item.action == .deleteSimulatorRuntime {
             return nil
         }
-        guard item.action == .delete else {
+        guard item.action == .delete || item.action == .trashOnly else {
             return "This item cannot be deleted."
+        }
+        // Your own files: only direct entries of the Downloads folder, and never a folder with a git repository inside.
+        if item.action == .trashOnly && (item.path as NSString).deletingLastPathComponent != options.downloadsPath {
+            return "Only entries of the Downloads folder can be trashed."
         }
         if catalog.isProtected(item.path, home: options.home) {
             return "Protected path."
@@ -132,6 +136,17 @@ public struct Optimizer: Sendable {
         case .cleanExternal, .deleteExternalCopy:
             stage("Cleaning")
             return cleanExternal(item, mode: mode)
+        case .trashOnly:
+            if let reason = refusalReason(item) {
+                return .skipped(reason)
+            }
+            stage("Moving to the Trash")
+            do {
+                try FolderCleaner.remove(item.path, mode: .trash)
+                return .done
+            } catch {
+                return .failed(error.localizedDescription)
+            }
         case .delete, .deleteSimulatorRuntime, .cleanInApp, .info, .never:
             break
         }

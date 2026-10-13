@@ -56,7 +56,7 @@ public struct Mover: Sendable {
         if PathTools.isSymlink(source) {
             return "It is already a link."
         }
-        guard PathTools.isDirectory(source) else {
+        guard PathTools.exists(source) else {
             return "The folder is gone. Scan again."
         }
         if options.disks.isOnExternalDisk(PathTools.resolved(source)) {
@@ -156,7 +156,7 @@ public struct Mover: Sendable {
         guard options.disks.isOnExternalDisk(target) else {
             return "It is not a link to an external disk."
         }
-        guard options.disks.isMounted(target), PathTools.isDirectory(target) else {
+        guard options.disks.isMounted(target), PathTools.exists(target) else {
             return "The external disk is not connected."
         }
         if PathTools.exists(link + Mover.RETURN_SUFFIX) {

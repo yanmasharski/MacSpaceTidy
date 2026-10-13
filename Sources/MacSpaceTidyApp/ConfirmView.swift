@@ -13,7 +13,8 @@ struct ConfirmView: View {
     var body: some View {
         let moves = model.selectedItems.filter { $0.action == .move }
         let externalCleans = model.selectedItems.filter { $0.category == .external }
-        let deletes = model.selectedItems.filter { $0.action != .move && $0.category != .external }
+        let trashed = model.selectedItems.filter { $0.action == .trashOnly }
+        let deletes = model.selectedItems.filter { $0.action != .move && $0.action != .trashOnly && $0.category != .external }
         VStack(alignment: .leading, spacing: 14) {
             Text("Check what will happen")
                 .font(.title2.bold())
@@ -21,6 +22,9 @@ struct ConfirmView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     if !moves.isEmpty {
                         moveSection(moves)
+                    }
+                    if !trashed.isEmpty {
+                        trashSection(trashed)
                     }
                     if !deletes.isEmpty {
                         deleteSection(deletes)
@@ -50,7 +54,7 @@ struct ConfirmView: View {
                 Spacer()
                 Button("Cancel") { model.activeSheet = nil }
                     .keyboardShortcut(.cancelAction)
-                Button(actionTitle(hasMoves: !moves.isEmpty, hasDeletes: !deletes.isEmpty || !externalCleans.isEmpty)) { model.optimize() }
+                Button(actionTitle(hasMoves: !moves.isEmpty, hasDeletes: !deletes.isEmpty || !externalCleans.isEmpty, hasTrashed: !trashed.isEmpty)) { model.optimize() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }
@@ -103,6 +107,20 @@ struct ConfirmView: View {
             if items.contains(where: { $0.action == .deleteSimulatorRuntime }) {
                 note("iphone", "Simulator runtimes are always deleted now. Xcode can download them again.")
             }
+            ForEach(items) { item in
+                row(item)
+            }
+        }
+    }
+
+    private func trashSection(_ items: [ScanItem]) -> some View {
+        section(
+            systemImage: "tray.full.fill",
+            tint: .orange,
+            title: "Your files to the Trash — \(count(items, "file")), \(ByteText.format(total(items)))",
+            subtitle: "These are your own files. They always go to the Trash, whatever the delete setting is, "
+                + "so you can put them back until you empty the Trash."
+        ) {
             ForEach(items) { item in
                 row(item)
             }
@@ -172,11 +190,11 @@ struct ConfirmView: View {
             .foregroundStyle(.secondary)
     }
 
-    private func actionTitle(hasMoves: Bool, hasDeletes: Bool) -> String {
-        switch (hasMoves, hasDeletes) {
-        case (true, true): return "Move and Delete"
+    private func actionTitle(hasMoves: Bool, hasDeletes: Bool, hasTrashed: Bool) -> String {
+        switch (hasMoves, hasDeletes || hasTrashed) {
+        case (true, true): return "Move and Clean"
         case (true, false): return "Move"
-        default: return model.deleteMode == .trash ? "Move to Trash" : "Delete"
+        default: return hasDeletes && model.deleteMode == .deleteNow ? "Delete" : "Move to Trash"
         }
     }
 

@@ -122,12 +122,14 @@ struct ItemRowView: View {
                 set: { model.plan.setMove(item, $0) }
             )) {
                 Text("Move").tag(true)
-                Text("Delete").tag(false)
+                Text(item.action == .trashOnly ? "Trash" : "Delete").tag(false)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
             .fixedSize()
-            .help("Move keeps the cache on the external disk. Delete removes it; the tool downloads it again when needed.")
+            .help(item.action == .trashOnly
+                ? "Move keeps the file on the external disk, with a link in its place. Trash puts it in the Trash."
+                : "Move keeps the cache on the external disk. Delete removes it; the tool downloads it again when needed.")
         }
     }
 
@@ -173,7 +175,7 @@ struct ItemRowView: View {
         switch item.action {
         case .cleanInApp: return "Clean this inside the app."
         case .info: return item.offersManualMove ? "Information only. Right-click to move it by hand." : "Information only."
-        case .delete, .deleteSimulatorRuntime, .move, .moveBack, .cleanExternal, .deleteExternalCopy, .never: return ""
+        case .delete, .deleteSimulatorRuntime, .move, .moveBack, .cleanExternal, .deleteExternalCopy, .trashOnly, .never: return ""
         }
     }
 }

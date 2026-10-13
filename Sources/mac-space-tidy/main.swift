@@ -22,6 +22,7 @@ private let ACTION_LABELS: [ItemAction: String] = [
     .moveBack: "moved",
     .cleanExternal: "clean",
     .deleteExternalCopy: "delete",
+    .trashOnly: "trash",
     .info: "info",
 ]
 

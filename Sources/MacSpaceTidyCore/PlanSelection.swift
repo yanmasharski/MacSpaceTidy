@@ -10,7 +10,7 @@ public struct PlanSelection: Sendable, Equatable {
 
     public static func isSelectable(_ item: ScanItem) -> Bool {
         switch item.action {
-        case .delete, .deleteSimulatorRuntime, .move, .cleanExternal, .deleteExternalCopy:
+        case .delete, .deleteSimulatorRuntime, .move, .cleanExternal, .deleteExternalCopy, .trashOnly:
             return true
         case .moveBack, .cleanInApp, .info, .never:
             return false

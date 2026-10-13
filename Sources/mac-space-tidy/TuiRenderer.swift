@@ -244,7 +244,8 @@ extension TuiApp {
         let items = chosenItems
         let moves = items.filter { $0.action == .move }
         let externals = items.filter { $0.category == .external }
-        let cleans = items.filter { $0.action != .move && $0.category != .external }
+        let trashed = items.filter { $0.action == .trashOnly }
+        let cleans = items.filter { $0.action != .move && $0.action != .trashOnly && $0.category != .external }
         // Running apps first: a long list must not hide them.
         var body = runningApps.map { T.YELLOW + T.fit("\($0) is running. Its items are skipped unless you quit it.", width) + T.RESET }
         if !body.isEmpty {
@@ -267,6 +268,12 @@ extension TuiApp {
                     body.append(T.DIM + T.fit("      → \(Mover.destination(for: item.path, diskRoot: root))", width) + T.RESET)
                 }
             }
+            body.append("")
+        }
+        if !trashed.isEmpty {
+            body.append(T.BOLD + T.YELLOW + T.fit("YOUR FILES TO THE TRASH — \(trashed.count) files, \(ByteText.format(total(trashed)))", width) + T.RESET)
+            body.append(T.DIM + T.fit("These are your own files. They always go to the Trash, so you can put them back.", width) + T.RESET)
+            body += trashed.map { itemLine($0, width: width) }
             body.append("")
         }
         if !cleans.isEmpty {

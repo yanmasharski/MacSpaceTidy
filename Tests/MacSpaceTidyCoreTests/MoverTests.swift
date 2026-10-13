@@ -103,6 +103,26 @@ struct MoverTests {
         #expect(!PathTools.exists(fixture.destination))
     }
 
+    @Test func movesASingleFileAndBack() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        let file = try fixture.temp.makeFile("home/Downloads/movie.mp4", bytes: 3_000_000)
+        let before = TreeSummary.make(path: file)
+        let item = ScanItem(
+            path: file, title: "movie", catalogId: nil, category: .downloads, action: .move, risk: .medium,
+            checkedByDefault: false, needsAdmin: false, ownerApps: [], reason: "test",
+            size: FolderSize.measure(path: file), linkTarget: nil
+        )
+        let destination = Mover.destination(for: file, diskRoot: fixture.diskRoot)
+
+        #expect(fixture.mover().move(item, diskRoot: fixture.diskRoot) == .done)
+        #expect(PathTools.linkTarget(file) == destination)
+        #expect(TreeSummary.make(path: file) == before)
+        #expect(fixture.mover().moveBack(item.with(action: .moveBack)) == .done)
+        #expect(!PathTools.isSymlink(file))
+        #expect(TreeSummary.make(path: file) == before)
+    }
+
     @Test func movesBackAndKeepsExternalCopy() throws {
         let fixture = try Fixture()
         defer { fixture.temp.remove() }

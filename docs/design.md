@@ -116,6 +116,21 @@ Terminal keys: arrows move, space toggles, Enter expands, `s` scans, `o` optimiz
 - Moved folders show "Last changed …" as a hint that they may be safe to clean. No action is tied to it.
 - Not checked by default: this frees the external disk, not the Mac.
 
+### Downloads (decided 2026-10-13)
+
+`~/Downloads` holds your own files, not caches, so it follows other rules:
+
+- Old entries are listed one by one, not as one folder: installers (`.dmg`, `.pkg`, `.iso`, `.exe`, `.msi`)
+  after 30 days, everything else after 90 days. Age is the later of the newest change inside and the
+  Spotlight "last opened" date. Entries under 1 MB, links, and `.DS_Store` are skipped.
+- Never checked by default. Always go to the Trash (`ItemAction.trashOnly`), even when the delete setting is
+  "Delete now". Only direct entries of `~/Downloads` can be trashed, and never a folder that holds a git repository.
+- Alternative: Move the file to the external disk. A link stays in its place. With a disk chosen, Move is the default
+  (nothing is lost). The Mover now moves single files too.
+- Not done: replacing the whole `~/Downloads` with a link. A disk that is not connected at login would break
+  downloads in the browser, and macOS may recreate the folder.
+- `~/Downloads` is never listed as an unknown big folder.
+
 ### What gets actions
 
 - Delete or move actions exist **only** for paths in the catalog (known paths with known risk).

@@ -6,6 +6,8 @@ public enum ItemAction: String, Codable, Sendable {
     case moveBack
     /// Empty a cache on an external disk. The folder and its link stay.
     case cleanExternal
+    /// One of your own files (a download). Always goes to the Trash, whatever the delete setting is.
+    case trashOnly
     /// Delete a whole copy in the tool folder on an external disk that nothing links to.
     case deleteExternalCopy
     case cleanInApp

@@ -29,6 +29,9 @@ public enum Scanner {
         for item in largeUnknownItems(catalog: catalog, options: options, progress: progress) {
             items[item.path] = item
         }
+        for item in DownloadsScanner.items(options: options, progress: progress) where items[item.path] == nil {
+            items[item.path] = item
+        }
 
         if let problem = ProblemFinder.freeSpaceProblem(disk: disk) {
             problems.insert(problem, at: 0)
@@ -108,7 +111,7 @@ public enum Scanner {
             return nil
         }
         let isMounted = options.disks.isMounted(target)
-        if isMounted && !PathTools.isDirectory(target) {
+        if isMounted && !PathTools.exists(target) {
             return nil
         }
         // A disk that is not connected is reported as a problem, so its size is just zero here.
@@ -143,7 +146,9 @@ public enum Scanner {
         var items: [ScanItem] = []
         for parent in options.unknownParents {
             for child in PathTools.children(of: parent) {
+                // Downloads has its own list of old entries.
                 let isKnown = catalogPaths.contains { PathTools.overlaps($0, child) } || options.unknownParents.contains(child)
+                    || child == options.downloadsPath
                 if isKnown || PathTools.isSymlink(child) || !PathTools.isDirectory(child) {
                     continue
                 }
