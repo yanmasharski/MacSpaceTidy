@@ -97,7 +97,24 @@ public struct Optimizer: Sendable {
         if options.disks.isOnExternalDisk(PathTools.resolved(item.path)) {
             return "It is inside a folder on an external disk."
         }
+        if !isInsideAllowedFolder(item) {
+            return "Outside the folders MacSpaceTidy may clean."
+        }
+        if PathTools.isDirectory(item.path + "/.git") {
+            return "It is a git repository."
+        }
         return nil
+    }
+
+    /// Defense in depth: delete only inside your home folder or `/Users/Shared`.
+    /// The exception is an admin item that the catalog itself lists, like the system simulator cache.
+    private func isInsideAllowedFolder(_ item: ScanItem) -> Bool {
+        let resolved = PathTools.resolved(item.path)
+        let allowed = [options.home, PathTools.resolved(options.home), Mover.SHARED_USERS_FOLDER]
+        if allowed.contains(where: { PathTools.isSameOrInside(resolved, folder: $0) && resolved != $0 }) {
+            return true
+        }
+        return item.needsAdmin && catalog.entries.contains { $0.needsAdmin && PathTools.expand($0.path, home: options.home) == item.path }
     }
 
     private func perform(_ item: ScanItem, mode: DeleteMode, diskRoot: String?, stage: @escaping Mover.Stage) -> ItemOutcome.Status {

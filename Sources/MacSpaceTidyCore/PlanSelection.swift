@@ -1,3 +1,5 @@
+import Foundation
+
 /// What the user chose: checked items, and which "move or delete" items are set to Move.
 /// Shared by the app and the terminal interface.
 public struct PlanSelection: Sendable, Equatable {
@@ -15,10 +17,20 @@ public struct PlanSelection: Sendable, Equatable {
         }
     }
 
-    /// Safe items are checked. With a disk, moving is preferred over deleting.
-    public static func defaults(for items: [ScanItem], hasDisk: Bool) -> PlanSelection {
+    /// An app cache that changed within this time may be in use, so it is not checked by default.
+    public static let RECENT_SECONDS: TimeInterval = 2 * 24 * 60 * 60
+
+    public static func isRecentlyUsed(_ item: ScanItem, now: Date = Date()) -> Bool {
+        guard item.ageMatters, let changed = item.size.newestChange else {
+            return false
+        }
+        return now.timeIntervalSince(changed) < RECENT_SECONDS
+    }
+
+    /// Safe items are checked, except app caches used in the last days. With a disk, moving is preferred over deleting.
+    public static func defaults(for items: [ScanItem], hasDisk: Bool, now: Date = Date()) -> PlanSelection {
         var plan = PlanSelection()
-        plan.selected = Set(items.filter { $0.checkedByDefault && isSelectable($0) }.map(\.id))
+        plan.selected = Set(items.filter { $0.checkedByDefault && isSelectable($0) && !isRecentlyUsed($0, now: now) }.map(\.id))
         if hasDisk {
             plan.preferMoves(in: items)
         }

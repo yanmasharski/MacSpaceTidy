@@ -68,6 +68,20 @@ struct OptimizerTests {
         #expect(PathTools.exists(temp.sub("Volumes/SSD/AppB/blob")))
     }
 
+    @Test func refusesFoldersOutsideHomeAndGitRepositories() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        let temp = fixture.temp
+        try temp.makeFile("home/Library/Caches/Repo/.git/HEAD", bytes: 10)
+        try temp.makeFile("elsewhere/Cache/blob", bytes: 10)
+
+        let optimizer = fixture.optimizer()
+
+        #expect(optimizer.refusalReason(fixture.item("home/Library/Caches/Repo")) == "It is a git repository.")
+        #expect(optimizer.refusalReason(fixture.item("elsewhere/Cache")) == "Outside the folders MacSpaceTidy may clean.")
+        #expect(optimizer.refusalReason(fixture.item("home/Library/Caches/Gone")) == "Already gone.")
+    }
+
     @Test func skipsItemWhenOwnerAppRuns() throws {
         let fixture = try Fixture()
         defer { fixture.temp.remove() }
@@ -91,7 +105,11 @@ struct OptimizerTests {
         #expect(cancelled.outcomes.isEmpty)
 
         let commands = CommandLog()
-        let result = fixture.optimizer(adminRunner: { list in
+        let adminCatalog = Catalog(entries: [CatalogEntry(
+            id: "admin", path: adminItem.path, category: .developer, action: .delete, risk: .low,
+            checkedByDefault: false, needsAdmin: true, ownerApps: [], reason: "test"
+        )])
+        let result = Optimizer(catalog: adminCatalog, options: fixture.options, ownerCheck: { _ in nil }, adminRunner: { list in
             commands.append(list)
             return "canceled"
         }).run(items: [adminItem], mode: .trash, isCancelled: { false })

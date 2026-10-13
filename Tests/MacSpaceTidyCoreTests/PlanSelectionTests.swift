@@ -1,13 +1,30 @@
+import Foundation
 import Testing
 @testable import MacSpaceTidyCore
 
 struct PlanSelectionTests {
-    private func item(_ id: String, action: ItemAction, checked: Bool, canMove: Bool = false) -> ScanItem {
+    private func item(
+        _ id: String, action: ItemAction, checked: Bool, canMove: Bool = false, ageMatters: Bool = false, changed: Date? = nil
+    ) -> ScanItem {
         return ScanItem(
             path: id, title: id, catalogId: nil, category: .caches, action: action, risk: .low,
             checkedByDefault: checked, needsAdmin: false, ownerApps: [], reason: "test",
-            size: FolderSize(bytes: 1, isIncomplete: false), linkTarget: nil, canMove: canMove
+            size: FolderSize(bytes: 1, isIncomplete: false, newestChange: changed), linkTarget: nil, canMove: canMove, ageMatters: ageMatters
         )
+    }
+
+    @Test func doesNotCheckAppCachesUsedInTheLastTwoDays() {
+        let now = Date()
+        let items = [
+            item("fresh-app-cache", action: .delete, checked: true, ageMatters: true, changed: now.addingTimeInterval(-3600)),
+            item("old-app-cache", action: .delete, checked: true, ageMatters: true, changed: now.addingTimeInterval(-5 * 86_400)),
+            item("fresh-download-cache", action: .delete, checked: true, ageMatters: false, changed: now.addingTimeInterval(-3600)),
+            item("empty-app-cache", action: .delete, checked: true, ageMatters: true, changed: nil),
+        ]
+
+        let plan = PlanSelection.defaults(for: items, hasDisk: false, now: now)
+
+        #expect(plan.selected == ["old-app-cache", "fresh-download-cache", "empty-app-cache"])
     }
 
     @Test func prefersMoveOnlyWhenDiskIsSet() {

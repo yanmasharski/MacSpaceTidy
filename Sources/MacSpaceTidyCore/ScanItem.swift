@@ -16,11 +16,13 @@ public struct ScanItem: Sendable, Identifiable {
     public let linkTarget: String?
     /// A delete item that the user may move instead.
     public let canMove: Bool
+    /// App cache that may be in use: not checked by default when it changed recently.
+    public let ageMatters: Bool
 
     public init(
         path: String, title: String, catalogId: String?, category: ItemCategory, action: ItemAction, risk: Risk,
         checkedByDefault: Bool, needsAdmin: Bool, ownerApps: [String], reason: String, size: FolderSize,
-        linkTarget: String?, canMove: Bool = false
+        linkTarget: String?, canMove: Bool = false, ageMatters: Bool = false
     ) {
         self.path = path
         self.title = title
@@ -35,6 +37,7 @@ public struct ScanItem: Sendable, Identifiable {
         self.size = size
         self.linkTarget = linkTarget
         self.canMove = canMove
+        self.ageMatters = ageMatters
     }
 
     public var id: String {
@@ -46,7 +49,7 @@ public struct ScanItem: Sendable, Identifiable {
         return ScanItem(
             path: path, title: title, catalogId: catalogId, category: category, action: action, risk: risk,
             checkedByDefault: false, needsAdmin: needsAdmin, ownerApps: ownerApps, reason: reason, size: size,
-            linkTarget: linkTarget, canMove: canMove
+            linkTarget: linkTarget, canMove: canMove, ageMatters: ageMatters
         )
     }
 
@@ -55,7 +58,7 @@ public struct ScanItem: Sendable, Identifiable {
         return ScanItem(
             path: path, title: title, catalogId: catalogId, category: category, action: action, risk: risk,
             checkedByDefault: checkedByDefault, needsAdmin: needsAdmin, ownerApps: ownerApps, reason: reason, size: size,
-            linkTarget: linkTarget, canMove: canMove
+            linkTarget: linkTarget, canMove: canMove, ageMatters: ageMatters
         )
     }
 }

@@ -206,6 +206,9 @@ extension TuiApp {
             if let date = item.size.newestChange, item.category == .alreadyMoved || item.category == .external {
                 text += " Last changed \(RelativeTime.ago(date))."
             }
+            if PlanSelection.isRecentlyUsed(item), let changed = item.size.newestChange {
+                text = "Changed \(RelativeTime.ago(changed)), so it is not checked. The app may be using it. " + text
+            }
             if let cachedAt = item.size.cachedAt {
                 text = "Size from the last scan, \(RelativeTime.ago(cachedAt)). Counting again… " + text
             }

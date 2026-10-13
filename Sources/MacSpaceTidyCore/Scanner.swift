@@ -94,7 +94,8 @@ public enum Scanner {
                     reason: entry.reason,
                     size: size,
                     linkTarget: nil,
-                    canMove: entry.canMove
+                    canMove: entry.canMove,
+                    ageMatters: entry.ageMatters
                 ))
             }
         }

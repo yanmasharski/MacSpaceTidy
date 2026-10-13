@@ -15,6 +15,8 @@ public struct CatalogEntry: Codable, Sendable {
     public let reason: String
     /// A delete item that may also be moved to an external disk instead.
     public let canMove: Bool
+    /// Cache of one app, which may be in use: not checked by default when it changed in the last days.
+    public let ageMatters: Bool
 
     public var isChildrenPattern: Bool {
         return path.hasSuffix(CatalogEntry.CHILDREN_SUFFIX)
@@ -22,7 +24,8 @@ public struct CatalogEntry: Codable, Sendable {
 
     public init(
         id: String, path: String, category: ItemCategory, action: ItemAction, risk: Risk,
-        checkedByDefault: Bool, needsAdmin: Bool, ownerApps: [String], reason: String, canMove: Bool = false
+        checkedByDefault: Bool, needsAdmin: Bool, ownerApps: [String], reason: String, canMove: Bool = false,
+        ageMatters: Bool = false
     ) {
         self.id = id
         self.path = path
@@ -34,6 +37,7 @@ public struct CatalogEntry: Codable, Sendable {
         self.ownerApps = ownerApps
         self.reason = reason
         self.canMove = canMove
+        self.ageMatters = ageMatters
     }
 
     public init(from decoder: Decoder) throws {
@@ -48,7 +52,8 @@ public struct CatalogEntry: Codable, Sendable {
             needsAdmin: try container.decode(Bool.self, forKey: .needsAdmin),
             ownerApps: try container.decode([String].self, forKey: .ownerApps),
             reason: try container.decode(String.self, forKey: .reason),
-            canMove: try container.decodeIfPresent(Bool.self, forKey: .canMove) ?? false
+            canMove: try container.decodeIfPresent(Bool.self, forKey: .canMove) ?? false,
+            ageMatters: try container.decodeIfPresent(Bool.self, forKey: .ageMatters) ?? false
         )
     }
 }

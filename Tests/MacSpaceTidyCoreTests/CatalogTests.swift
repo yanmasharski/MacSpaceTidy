@@ -12,6 +12,9 @@ struct CatalogTests {
             #expect(entry.path.hasPrefix("/") || entry.path.hasPrefix("~/"), "\(entry.id) has a relative path")
             #expect(!(entry.action == .never && entry.checkedByDefault), "\(entry.id) is never-touch but checked")
             #expect(!(entry.action == .move && entry.checkedByDefault), "\(entry.id): moves must not be checked by default")
+            #expect(!entry.checkedByDefault || entry.risk == .low, "\(entry.id): only low risk items are checked by default")
+            #expect(!entry.canMove || entry.action == .delete, "\(entry.id): canMove is for delete items only")
+            #expect(!entry.reason.isEmpty, "\(entry.id) has no reason")
         }
     }
 
