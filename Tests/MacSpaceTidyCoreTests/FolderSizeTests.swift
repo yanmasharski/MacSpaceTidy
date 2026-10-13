@@ -57,3 +57,34 @@ struct TreeSummaryTests {
         #expect(TreeSummary.make(path: temp.sub("a")) != TreeSummary.make(path: temp.sub("c")))
     }
 }
+
+struct FolderSizeAgainstReferenceTests {
+    @Test func fastMeasureMatchesFtsOnAMixedTree() throws {
+        let temp = try TempFolder()
+        defer { temp.remove() }
+        for index in 0..<40 {
+            try temp.makeFile("tree/dir\(index % 7)/sub\(index % 3)/file\(index).bin", bytes: 1000 + index * 977)
+        }
+        try temp.makeFile("tree/\u{0439}-name/data.bin", bytes: 12345)
+        let original = try temp.makeFile("tree/dir1/original.bin", bytes: 50_000)
+        try FileManager.default.linkItem(atPath: original, toPath: temp.sub("tree/dir2/hardlink.bin"))
+        try temp.makeLink("tree/dir3/loop", to: temp.sub("tree"))
+        try temp.makeFolder("tree/empty")
+
+        let fast = FolderSize.measure(path: temp.sub("tree"))
+        let reference = FtsReference.measure(path: temp.sub("tree"))
+
+        #expect(fast.bytes == reference.bytes)
+        #expect(fast.isIncomplete == reference.isIncomplete)
+        #expect(fast.newestChange != nil)
+    }
+
+    @Test func measuresASingleFileAndAMissingPath() throws {
+        let temp = try TempFolder()
+        defer { temp.remove() }
+        let file = try temp.makeFile("one.bin", bytes: 100_000)
+
+        #expect(FolderSize.measure(path: file).bytes >= 100_000)
+        #expect(FolderSize.measure(path: temp.sub("missing")).isIncomplete)
+    }
+}
