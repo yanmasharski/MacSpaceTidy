@@ -1,7 +1,6 @@
 import AppKit
 import SwiftUI
 
-@main
 struct MacSpaceTidyApp: App {
     private static let MIN_WIDTH: CGFloat = 760
     private static let MIN_HEIGHT: CGFloat = 600

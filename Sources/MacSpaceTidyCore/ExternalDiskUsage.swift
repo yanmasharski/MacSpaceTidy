@@ -7,6 +7,12 @@ public struct ExternalDiskUsage: Sendable, Identifiable {
     /// Size of the folders moved there from this Mac.
     public let movedBytes: Int64
 
+    public init(root: String, space: DiskSpace, movedBytes: Int64) {
+        self.root = root
+        self.space = space
+        self.movedBytes = movedBytes
+    }
+
     public var id: String {
         return root
     }

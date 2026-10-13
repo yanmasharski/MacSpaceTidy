@@ -17,13 +17,22 @@ final class AppModel {
     var optimizeTotal = 0
     var result: OptimizeResult?
     var diskChoices: [DiskChoice] = []
+    /// Demo data for snapshots: nothing is saved or scanned.
+    var isDemo = false
+    var initiallyExpanded: Set<ItemCategory> = []
     var deleteMode: DeleteMode {
-        didSet { SharedSettings.deleteMode = deleteMode }
+        didSet {
+            if !isDemo {
+                SharedSettings.deleteMode = deleteMode
+            }
+        }
     }
     /// External disk for moves. Chosen once, remembered.
     var moveDiskRoot: String? {
         didSet {
-            SharedSettings.moveDiskRoot = moveDiskRoot
+            if !isDemo {
+                SharedSettings.moveDiskRoot = moveDiskRoot
+            }
             if oldValue == nil && moveDiskRoot != nil {
                 plan.preferMoves(in: report?.items ?? [])
             }
@@ -71,11 +80,17 @@ final class AppModel {
     }
 
     func refreshDiskChoices() {
+        if isDemo {
+            return
+        }
         diskChoices = ExternalDisks().choices(internalPath: NSHomeDirectory())
     }
 
     /// Dry run of a move: nil when it can start, else the reason why not.
     func moveRefusal(_ item: ScanItem) -> String? {
+        if isDemo {
+            return nil
+        }
         guard let catalog else {
             return "The rules catalog is not loaded."
         }

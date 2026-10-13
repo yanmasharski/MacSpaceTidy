@@ -7,7 +7,15 @@ struct CategorySectionView: View {
     let items: [ScanItem]
     let totalBytes: Int64
 
-    @State private var isExpanded = false
+    @State private var isExpanded: Bool
+
+    init(model: AppModel, category: ItemCategory, items: [ScanItem], totalBytes: Int64) {
+        self.model = model
+        self.category = category
+        self.items = items
+        self.totalBytes = totalBytes
+        _isExpanded = State(initialValue: model.initiallyExpanded.contains(category))
+    }
 
     var body: some View {
         let selectable = items.filter(PlanSelection.isSelectable)

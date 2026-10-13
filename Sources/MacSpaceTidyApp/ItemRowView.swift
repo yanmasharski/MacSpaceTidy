@@ -43,16 +43,21 @@ struct ItemRowView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                if PlanSelection.isRecentlyUsed(item), let changed = item.size.newestChange {
+                    Label("Changed \(RelativeTime.ago(changed)), so it is not checked. The app may be using it.", systemImage: "clock")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 if let cachedAt = item.size.cachedAt {
                     Label("Size from the last scan, \(RelativeTime.ago(cachedAt)). Counting again…", systemImage: "clock.arrow.circlepath")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             if item.canMove {
                 movePicker
             }
-            Spacer(minLength: 12)
             if item.action == .moveBack {
                 Button("Move back") { isMoveBackAsked = true }
                     .controlSize(.small)

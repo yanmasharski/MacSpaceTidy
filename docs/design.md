@@ -143,6 +143,25 @@ Rules are data (`catalog.json`), not code. Starting content:
 | Clean in the app | `Containers/`, `Group Containers/`, Mail, Messages, Safari |
 | Never touch | `Preferences`, `Keychains`, `IdentityServices`, `CloudStorage`, `Biome`, `LaunchAgents`, `LaunchDaemons`, fonts, `/System`, iCloud, the tool and its journal |
 
+## Ideas taken from SpaceGuard (2026-10-13)
+
+[SpaceGuard](https://github.com/mkrn/spaceguard) (MIT, by mkrn) solves a neighbor problem: it deletes developer junk.
+What MacSpaceTidy took from it, as ideas (the code is separate):
+
+- Folder sizes with `getattrlistbulk` (`BulkDirectoryReader`). Measured on this Mac: internal scan about 25% faster,
+  single folders up to 2.5x faster, the external disk only about 15% faster (it is limited by reading the disk).
+  Sizes match the old `fts` walk, which stays in the tests as a reference.
+- A longer catalog of known cache locations (about 110 entries).
+- `ageMatters`: a cache of one app that changed in the last 2 days is not checked by default.
+  Global download caches (npm, Cargo, Gradle) are checked whatever their age.
+- Retry with `chmod -R u+w` and `chflags nouchg` for read-only trees (the Go module cache).
+- Delete guards: only inside the home folder or `/Users/Shared`, never a folder with `.git`.
+- A snapshot mode (`MacSpaceTidyApp --snapshot out.png --demo`), used for the README screenshots and to check the UI
+  without a screen. It uses made-up data and never reads or writes real settings.
+
+Not taken yet: git worktree cleaning, a menu-bar watcher with a low-space notification, and reusing sizes of trees
+that were quiet for days (the size cache already shows old sizes while it counts again).
+
 ## Distribution
 
 - Public GitHub repo `yanmasharski/MacSpaceTidy`, MIT license.

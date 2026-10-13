@@ -10,6 +10,14 @@ internal disk. One scan, one button.
 
 It comes as a Mac app and as a full-screen terminal program. Both are free and open source.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-dark.png">
+    <img src="docs/images/screenshot-light.png" width="640" alt="MacSpaceTidy: a disk bar split by category, a list of problems, and categories with checkboxes. Big developer caches have a Move or Delete switch.">
+  </picture>
+</p>
+<p align="center"><sub>Demo data. The window with real data looks the same.</sub></p>
+
 ---
 
 ## Why I built it
@@ -55,12 +63,16 @@ Other ways may suit you better. This tool is about my way.
 - **Finds problems.** Links to an external disk that is not connected, broken links, links left over from a
   move that did not finish, Time Machine snapshots that hold space, low free space.
 - **Cleans safely.** Caches are emptied, not deleted: the folder stays, so links and permissions stay too.
-  You choose: to the Trash (you can restore) or delete now.
+  You choose: to the Trash (you can restore) or delete now. It knows about 110 cache and toolchain locations
+  (Xcode, simulators, Node, Python, Rust, Go, JVM, Flutter, editors, AI tools). A cache of an app you used in the
+  last two days is not checked by default: the app may be using it.
 - **Moves big folders.** To your external SSD, behind a link. Big developer caches can be moved or deleted —
   moving is the default when a disk is set.
 - **Moves them back.** One button per moved folder.
 - **Looks after the external disk too.** Shows how much you moved there, when each folder last changed,
   and which moved caches and old copies you can clean.
+
+<p align="center"><img src="docs/images/screenshot-confirm.png" width="420" alt="The confirm window: folders to move, and items to clean, in separate groups."></p>
 
 ### Safety rules
 
@@ -193,6 +205,20 @@ MST_REAL_DISK=/Volumes/<disk> swift test --filter RealDiskTests
 
 The rules about what is safe live in one file: [`catalog.json`](Sources/MacSpaceTidyCore/Resources/catalog.json).
 Design decisions: [docs/design.md](docs/design.md).
+
+## Related projects
+
+- **[SpaceGuard](https://github.com/mkrn/spaceguard)** by [mkrn](https://github.com/mkrn). A menu-bar app that watches
+  your free space and cleans stale developer caches, simulator runtimes, and git worktrees left by coding agents
+  (Claude Code, Codex, Cursor). It only deletes; MacSpaceTidy also moves folders to an external disk.
+  If you need to clean worktrees, or want a watcher in the menu bar, look at SpaceGuard.
+
+## Thanks
+
+- [mkrn](https://github.com/mkrn) and SpaceGuard (MIT) gave me ideas that I took into MacSpaceTidy: reading folders
+  with `getattrlistbulk` for fast size counts, a screenshot mode for the README, a longer list of known cache
+  locations, not checking caches that were used in the last days, and a retry for read-only trees such as the Go
+  module cache. The code here is written separately.
 
 ## License
 

@@ -68,7 +68,7 @@ struct DiskBarView: View {
             segments.append(Segment(id: category.rawValue, title: category.title, bytes: bytes, color: CategoryColors.color(category)))
         }
         let otherBytes = max(report.disk.usedBytes - knownBytes, 0)
-        segments.append(Segment(id: "other", title: "macOS, apps, your files", bytes: otherBytes, color: CategoryColors.other))
+        segments.append(Segment(id: "other", title: "Everything else", bytes: otherBytes, color: CategoryColors.other))
         segments.append(Segment(id: "free", title: "Free", bytes: report.disk.freeBytes, color: CategoryColors.free))
         return segments
     }

@@ -3,27 +3,12 @@ import MacSpaceTidyCore
 import SwiftUI
 
 struct ContentView: View {
-    private static let FULL_DISK_ACCESS_URL = "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
-
     @Bindable var model: AppModel
 
     var body: some View {
         VStack(spacing: 0) {
             if let report = model.report {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        DiskBarView(report: report)
-                        ForEach(report.externalDisks) { disk in
-                            ExternalDiskBarView(disk: disk)
-                        }
-                        banners(report)
-                        if !report.problems.filter({ $0.kind != .lowFreeSpace }).isEmpty {
-                            ProblemsView(model: model, problems: report.problems)
-                        }
-                        CategoryListView(model: model, report: report)
-                    }
-                    .padding(20)
-                }
+                ReportView(model: model, report: report)
             } else {
                 emptyState
             }
@@ -91,21 +76,5 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    @ViewBuilder
-    private func banners(_ report: ScanReport) -> some View {
-        if let lowSpace = report.problems.first(where: { $0.kind == .lowFreeSpace }) {
-            BannerView(systemImage: "exclamationmark.triangle.fill", tint: .red, text: lowSpace.detail)
-        }
-        if report.hasUnreadableFolders {
-            BannerView(systemImage: "lock.fill", tint: .orange, text: "Some folders could not be read. Give Full Disk Access for full numbers.") {
-                Button("Open Settings") {
-                    if let url = URL(string: ContentView.FULL_DISK_ACCESS_URL) {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-            }
-        }
     }
 }
