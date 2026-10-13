@@ -5,7 +5,7 @@ set -euo pipefail
 
 APP_NAME="MacSpaceTidy"
 BUNDLE_ID="io.github.yanmasharski.MacSpaceTidy"
-VERSION="0.1.0"
+VERSION="0.2.0"
 MIN_MACOS="14.0"
 
 cd "$(dirname "$0")/.."
