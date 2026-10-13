@@ -78,21 +78,60 @@ Other ways may suit you better. This tool is about my way.
 - A moved folder works only while the external disk is connected. Use a disk that stays plugged in.
 - Some apps delete and recreate their cache folder, which removes the link. That is why small app caches
   are only cleaned, never moved.
-- The app is not signed with a paid Apple developer account (see Install).
+- The app is not notarized by Apple (no paid developer account), so macOS shows a warning when you download it
+  with a browser. The [Install](#install) section explains how to open it safely.
 
 ---
 
 ## Install
 
 Needs macOS 14 Sonoma or newer. Works on Apple silicon and Intel Macs.
-### Download
+### Easiest: one command
+
+Open **Terminal** (press Cmd-Space, type `Terminal`, press Enter), paste this line, press Enter:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/yanmasharski/MacSpaceTidy/main/install.sh)"
+```
+
+It downloads the latest release, checks it, puts `MacSpaceTidy.app` in Applications, and opens it.
+No warning from macOS, because a file downloaded this way is not marked as "from the internet".
+You can read the script first: [install.sh](install.sh). Run it again any time to update.
+
+### Download by hand
 
 1. Download `MacSpaceTidy.zip` from [Releases](../../releases) and unzip it.
 2. Move `MacSpaceTidy.app` to Applications.
-3. First launch: right-click the app → **Open** → **Open**. macOS asks this once because the app is not
-   signed with a paid Apple account.
-4. For full numbers, give the app **Full Disk Access**: System Settings → Privacy & Security → Full Disk Access.
-   The app works without it, but some folders stay unmeasured.
+3. Open it. macOS will most likely refuse, see the next section.
+
+### macOS says the app is "damaged", "unsigned", or "from an unidentified developer"
+
+This is normal for apps outside the App Store that are not notarized by Apple. Notarization needs a paid
+Apple Developer account ($99 a year). MacSpaceTidy is free and open source, so it does not have one yet.
+The app is signed in the "ad hoc" way: it is not changed after the build, but Apple has not checked it.
+Browsers mark every download as "from the internet", and macOS blocks such apps at the first launch.
+The message may say the app is damaged and should be moved to the Trash. **Do not delete it. It is not damaged.**
+
+Pick one way:
+
+1. **The one command above.** It also fixes an app you already downloaded: it replaces it with a clean copy.
+2. **Allow it in System Settings** (macOS 15 and newer):
+   1. Try to open the app once. Click **Done** (not "Move to Trash").
+   2. Open System Settings → **Privacy & Security**, scroll down to **Security**.
+   3. Click **Open Anyway** next to "MacSpaceTidy was blocked", then confirm with your password.
+   On macOS 14 you can also right-click the app → **Open** → **Open**.
+3. **Remove the mark in Terminal** (if the app is in Applications):
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/MacSpaceTidy.app
+   ```
+
+If you do not trust a program from the internet, build it yourself from the source: see below.
+
+### After the first launch
+
+For full numbers, give the app **Full Disk Access**: System Settings → Privacy & Security → Full Disk Access.
+The app works without it, but some folders stay unmeasured.
 
 ### Build from source
 
@@ -143,7 +182,7 @@ mac-space-tidy scan --moved-sizes  # also measure folders on external disks (slo
 
 ```bash
 swift test
-./scripts/package-release.sh   # builds dist/MacSpaceTidy-<version>.zip for a release
+./scripts/package-release.sh   # builds dist/MacSpaceTidy.zip and its .sha256 file for a release
 ```
 
 A move to a real external disk and back (off by default, uses a small temp folder):
