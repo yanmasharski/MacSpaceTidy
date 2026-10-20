@@ -131,6 +131,22 @@ Terminal keys: arrows move, space toggles, Enter expands, `s` scans, `o` optimiz
   downloads in the browser, and macOS may recreate the folder.
 - `~/Downloads` is never listed as an unknown big folder.
 
+### Leftovers of removed apps (`LeftoverScanner`)
+
+Apps leave data in `~/Library` after you drag them to the Trash.
+
+- Looked at: direct entries of `~/Library/` `Application Support`, `Caches`, `Containers`, `Group Containers`,
+  `WebKit`, `Logs`. Only names that are bundle ids (`com.vendor.App`, also `group.…` and `TEAMID.…`) are judged.
+  Names of other kinds ("Slack", "Google") are not: matching them to apps by name gives too many false hits.
+- A folder is a leftover when no installed app has that id. Installed means: an `.app` in `ScanOptions.appFolders`
+  (depth 3), a running app, a Launch Services answer, or a launch plist. An id also matches when one is the start of
+  the other (`com.vendor.App.helper`, vendor folders). `com.apple.*` is never listed. Entries under 1 MB are skipped.
+- A wrong "installed" answer only hides a leftover. A wrong "not installed" answer could delete live data, so every
+  check leans to "installed". Never checked by default, risk medium, always to the Trash (`ItemAction.trashOnly`).
+- Only direct entries of those folders can be trashed (`Optimizer.refusalReason`).
+- A leftover replaces the plain cache item of the same path, and its size is taken out of a listed parent folder
+  (`~/Library/Containers`), so the disk bar does not count it twice.
+
 ### What gets actions
 
 - Delete or move actions exist **only** for paths in the catalog (known paths with known risk).

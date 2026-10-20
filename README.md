@@ -68,6 +68,8 @@ Other ways may suit you better. This tool is about my way.
   last two days is not checked by default: the app may be using it.
 - **Tidies Downloads.** Old installers, archives, and files you have not opened for months, one by one.
   They are never checked for you and always go to the Trash. Or move them to the external disk.
+- **Finds leftovers of removed apps.** Data in `~/Library` whose bundle id matches no installed app. Never checked
+  for you, and always goes to the Trash.
 - **Moves big folders.** To your external SSD, behind a link. Big developer caches can be moved or deleted —
   moving is the default when a disk is set.
 - **Moves them back.** One button per moved folder.

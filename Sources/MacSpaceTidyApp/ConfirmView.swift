@@ -117,8 +117,8 @@ struct ConfirmView: View {
         section(
             systemImage: "tray.full.fill",
             tint: .orange,
-            title: "Your files to the Trash — \(count(items, "file")), \(ByteText.format(total(items)))",
-            subtitle: "These are your own files. They always go to the Trash, whatever the delete setting is, "
+            title: "To the Trash — \(count(items, "item")), \(ByteText.format(total(items)))",
+            subtitle: "These are your own files or data of removed apps. They always go to the Trash, whatever the delete setting is, "
                 + "so you can put them back until you empty the Trash."
         ) {
             ForEach(items) { item in

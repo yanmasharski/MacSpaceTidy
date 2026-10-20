@@ -11,6 +11,7 @@ enum CategoryColors {
         case .developer: return .purple
         case .apps: return .orange
         case .downloads: return .yellow
+        case .leftovers: return .pink
         case .simulators: return .pink
         case .cleanInApp: return .teal
         case .largeUnknown: return .brown

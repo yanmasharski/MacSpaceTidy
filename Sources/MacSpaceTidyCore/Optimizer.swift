@@ -85,9 +85,11 @@ public struct Optimizer: Sendable {
         guard item.action == .delete || item.action == .trashOnly else {
             return "This item cannot be deleted."
         }
-        // Your own files: only direct entries of the Downloads folder, and never a folder with a git repository inside.
-        if item.action == .trashOnly && (item.path as NSString).deletingLastPathComponent != options.downloadsPath {
-            return "Only entries of the Downloads folder can be trashed."
+        // Your own files and leftovers: only direct entries of the Downloads folder or of the leftover folders,
+        // and never a folder with a git repository inside.
+        let trashParents = [options.downloadsPath] + LeftoverScanner.folders(options: options)
+        if item.action == .trashOnly && !trashParents.contains((item.path as NSString).deletingLastPathComponent) {
+            return "Only entries of the Downloads folder and of the leftover folders can be trashed."
         }
         if catalog.isProtected(item.path, home: options.home) {
             return "Protected path."

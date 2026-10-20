@@ -18,6 +18,8 @@ public struct ScanOptions: Sendable {
     public var usesSystemTools: Bool
     /// Measure folders that are already on an external disk. Slow: minutes for hundreds of GB.
     public var measuresMovedItems: Bool
+    /// Folders searched for installed apps. Their bundle ids tell which `~/Library` folders are leftovers.
+    public var appFolders: [String]
 
     public init(home: String, disks: ExternalDisks, unknownParents: [String], linkRoots: [String], usesSystemTools: Bool) {
         self.home = home
@@ -29,6 +31,7 @@ public struct ScanOptions: Sendable {
         self.minChildItemBytes = ScanOptions.MIN_CHILD_ITEM_BYTES
         self.usesSystemTools = usesSystemTools
         self.measuresMovedItems = false
+        self.appFolders = []
     }
 
     /// The folder with your downloads. Its old entries are listed one by one, never as a whole.
@@ -48,12 +51,14 @@ public struct ScanOptions: Sendable {
 
     public static func standard(home: String = NSHomeDirectory()) -> ScanOptions {
         let library = (home as NSString).appendingPathComponent("Library")
-        return ScanOptions(
+        var options = ScanOptions(
             home: home,
             disks: ExternalDisks(),
             unknownParents: [home, library, (library as NSString).appendingPathComponent("Application Support")],
             linkRoots: [home, "/Users/Shared", "/opt/homebrew"],
             usesSystemTools: true
         )
+        options.appFolders = ["/Applications", "/System/Applications", (home as NSString).appendingPathComponent("Applications")]
+        return options
     }
 }

@@ -32,6 +32,18 @@ public enum Scanner {
         for item in DownloadsScanner.items(options: options, progress: progress) where items[item.path] == nil {
             items[item.path] = item
         }
+        for item in LeftoverScanner.items(catalog: catalog, options: options, progress: progress) {
+            // A leftover replaces a plain cache item of the same path. Inside a listed folder (Containers) it is
+            // taken out of that folder's size, so the disk bar does not count it twice.
+            let parentPath = (item.path as NSString).deletingLastPathComponent
+            if items[item.path] == nil, let parent = items[parentPath] {
+                let size = parent.size
+                items[parentPath] = parent.with(size: FolderSize(
+                    bytes: max(0, size.bytes - item.size.bytes), isIncomplete: size.isIncomplete, newestChange: size.newestChange
+                ))
+            }
+            items[item.path] = item
+        }
 
         if let problem = ProblemFinder.freeSpaceProblem(disk: disk) {
             problems.insert(problem, at: 0)

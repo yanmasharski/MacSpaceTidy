@@ -3,6 +3,7 @@ public enum ItemCategory: String, Codable, Sendable, CaseIterable {
     case developer
     case apps
     case downloads
+    case leftovers
     case simulators
     case cleanInApp
     case largeUnknown
@@ -16,6 +17,7 @@ public enum ItemCategory: String, Codable, Sendable, CaseIterable {
         case .developer: return "Developer tools"
         case .apps: return "Apps"
         case .downloads: return "Downloads"
+        case .leftovers: return "Leftovers of removed apps"
         case .simulators: return "Simulator runtimes"
         case .cleanInApp: return "Clean inside the app"
         case .largeUnknown: return "Large, unknown"

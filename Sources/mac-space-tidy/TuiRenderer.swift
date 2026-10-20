@@ -271,8 +271,8 @@ extension TuiApp {
             body.append("")
         }
         if !trashed.isEmpty {
-            body.append(T.BOLD + T.YELLOW + T.fit("YOUR FILES TO THE TRASH — \(trashed.count) files, \(ByteText.format(total(trashed)))", width) + T.RESET)
-            body.append(T.DIM + T.fit("These are your own files. They always go to the Trash, so you can put them back.", width) + T.RESET)
+            body.append(T.BOLD + T.YELLOW + T.fit("TO THE TRASH — \(trashed.count) items, \(ByteText.format(total(trashed)))", width) + T.RESET)
+            body.append(T.DIM + T.fit("These are your own files or data of removed apps. They always go to the Trash, so you can put them back.", width) + T.RESET)
             body += trashed.map { itemLine($0, width: width) }
             body.append("")
         }
