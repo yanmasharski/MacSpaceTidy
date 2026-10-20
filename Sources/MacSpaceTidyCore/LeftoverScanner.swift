@@ -5,7 +5,8 @@ import Foundation
 ///
 /// Three kinds, from the most to the least sure:
 /// 1. A `~/Library` folder named by a bundle id (`com.vendor.App`) that no installed app has.
-/// 2. A Wine prefix (`~/.wine`) when Wine is not installed. It may be a link to a folder on an external disk.
+/// 2. A Wine prefix (`~/.wine`) when Wine is not installed. It may be a link to a folder on an external disk;
+///    then only its content is cleaned and the link stays.
 /// 3. A folder of `Application Support` that no installed app is named after. Risk is high: it may be a game or a tool.
 public enum LeftoverScanner {
     private static let LIBRARY_FOLDERS = ["Application Support", "Caches", "Containers", "Group Containers", "WebKit", "Logs"]
@@ -100,7 +101,7 @@ public enum LeftoverScanner {
 
     private static func reason(winePrefixIsLinked isLinked: Bool) -> String {
         return "A Wine prefix: a Windows folder with its programs. Wine is not installed. "
-            + (isLinked ? "Goes to the Trash together with its link." : "Goes to the Trash, so you can restore it.")
+            + (isLinked ? "Its content goes to the Trash. The folder and its link stay." : "Goes to the Trash, so you can restore it.")
     }
 
     private struct Verdict {
@@ -152,7 +153,7 @@ public enum LeftoverScanner {
         return options.usesSystemTools && WINE_BINARIES.contains { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
-    /// Nil when the Wine prefix link may be removed together with the folder it points to.
+    /// Nil when the content of the folder behind the Wine link may be cleaned. The link itself is never removed.
     public static func linkedPrefixRefusal(options: ScanOptions) -> String? {
         guard let target = PathTools.linkTarget(winePrefix(options: options)), options.disks.isOnExternalDisk(target),
               options.disks.isMounted(target), PathTools.isDirectory(target), !PathTools.isSymlink(target) else {

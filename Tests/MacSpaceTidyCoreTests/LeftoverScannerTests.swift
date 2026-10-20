@@ -90,15 +90,23 @@ struct LeftoverScannerTests {
         #expect(LeftoverScanner.items(catalog: Catalog(entries: []), options: fixture.options).isEmpty)
     }
 
-    @Test func aWinePrefixBehindALinkGoesToTheTrashTogetherWithTheLink() throws {
+    @Test func aWinePrefixBehindALinkIsCleanedInsideAndTheLinkAndFolderStay() throws {
         let fixture = try Fixture()
         defer { fixture.temp.remove() }
         let name = "mst-wine-\(UUID().uuidString)"
+        let marker = UUID().uuidString
         let target = try fixture.temp.makeFolder("Volumes/SSD/\(name)")
-        try fixture.temp.makeFile("Volumes/SSD/\(name)/system.reg", bytes: LeftoverScannerTests.BIG_BYTES)
+        try Data(marker.utf8).write(to: URL(fileURLWithPath: target + "/system.reg"))
+        try fixture.temp.makeFile("Volumes/SSD/\(name)/\(name).bin", bytes: LeftoverScannerTests.BIG_BYTES)
         try fixture.temp.makeLink("home/.wine", to: target)
-        let trashedCopy = (NSHomeDirectory() as NSString).appendingPathComponent(".Trash/\(name)")
-        defer { try? FileManager.default.removeItem(atPath: trashedCopy) }
+        let trash = (NSHomeDirectory() as NSString).appendingPathComponent(".Trash")
+        defer {
+            try? FileManager.default.removeItem(atPath: trash + "/\(name).bin")
+            // The marker file is named system.reg in the Trash too; remove only the one that holds this test's marker.
+            for entry in PathTools.children(of: trash) where (try? String(contentsOfFile: entry, encoding: .utf8)) == marker {
+                try? FileManager.default.removeItem(atPath: entry)
+            }
+        }
         let catalog = Catalog(entries: [])
         let report = try Scanner.scan(catalog: catalog, options: fixture.options)
         let item = try #require(report.items(in: .leftovers).first)
@@ -111,9 +119,11 @@ struct LeftoverScannerTests {
         let result = optimizer.run(items: [item], mode: .deleteNow, isCancelled: { false })
 
         #expect(result.outcomes.map(\.status) == [.done])
-        #expect(!PathTools.exists(fixture.temp.sub("home/.wine")))
-        #expect(!PathTools.exists(target))
-        #expect(PathTools.exists(trashedCopy))
+        #expect(PathTools.isSymlink(fixture.temp.sub("home/.wine")))
+        #expect(PathTools.isDirectory(target) && PathTools.children(of: target).isEmpty)
+        #expect(PathTools.exists(trash + "/\(name).bin"))
+        // Nothing is left to list, so a new scan shows no leftover.
+        #expect(try Scanner.scan(catalog: catalog, options: fixture.options).items(in: .leftovers).isEmpty)
     }
 
     @Test func aWineLinkToAnythingButAnExternalPrefixIsRefused() throws {

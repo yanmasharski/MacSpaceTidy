@@ -91,7 +91,7 @@ public struct Optimizer: Sendable {
             && (item.path as NSString).deletingLastPathComponent != options.downloadsPath && !LeftoverScanner.canTrash(item.path, options: options) {
             return "Only entries of the Downloads folder and of the leftover folders can be trashed."
         }
-        // The Wine prefix may be a link to an external disk. Then the link and the folder go together.
+        // The Wine prefix may be a link to an external disk. Then its content is cleaned; the link and the folder stay.
         if item.action == .trashOnly && PathTools.isSymlink(item.path) && item.path == LeftoverScanner.winePrefix(options: options) {
             return LeftoverScanner.linkedPrefixRefusal(options: options)
         }
@@ -149,8 +149,8 @@ public struct Optimizer: Sendable {
             stage("Moving to the Trash")
             do {
                 if PathTools.isSymlink(item.path), let target = PathTools.linkTarget(item.path) {
-                    try FolderCleaner.remove(target, mode: .trash)
-                    try FileManager.default.removeItem(atPath: item.path)
+                    // A link is never deleted: only what is inside the folder behind it goes to the Trash.
+                    try FolderCleaner.clean(target, mode: .trash)
                 } else {
                     try FolderCleaner.remove(item.path, mode: .trash)
                 }

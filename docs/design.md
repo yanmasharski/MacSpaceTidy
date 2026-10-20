@@ -139,8 +139,9 @@ Apps leave data behind after you drag them to the Trash. Three kinds, from the m
    `WebKit`, `Logs`, named by a bundle id (`com.vendor.App`, also `group.…` and `TEAMID.…`), when no installed app has
    that id. Risk medium. `com.apple.*` is never listed. Entries under 1 MB are skipped.
 2. **Wine prefix.** `~/.wine` when it holds `system.reg` and Wine is not installed (no Wine app or CrossOver, no `wine`
-   binary). It may be a link to a folder on an external disk: then the link and the folder go to the Trash together,
-   and only if the link points to a folder inside a connected external disk (`Optimizer.refusalReason`). Risk medium.
+   binary). It may be a link to a folder on an external disk: then only the content goes to the Trash, and the folder and
+   its link stay. This is allowed only if the link points to a folder inside a connected external disk
+   (`Optimizer.refusalReason`). Risk medium.
 3. **Name match.** Folders of `Application Support` that no installed app is named after. An app name, executable,
    the vendor or last part of its id, or a name that starts the other (`Epic` / `EpicGamesLauncher`) counts as a match.
    macOS folders (iPhone backups, contacts, the Dock) are never judged. Folders under 20 MB are skipped. Risk high.
@@ -151,6 +152,7 @@ Services answer, or a launch plist. An id also matches when one is the start of 
 Safety rules:
 - Every check leans to "installed": a wrong "installed" only hides a leftover, a wrong "not installed" could trash live data.
 - With any linked disk missing, the search is skipped: apps on that disk cannot be seen.
+- A link is never deleted by a clean. Content goes, links and their folders stay.
 - Never checked by default. Always to the Trash (`ItemAction.trashOnly`), even when the delete setting is "Delete now".
   Only direct entries of those folders, and the Wine prefix, can be trashed.
 - A running app that owns the folder blocks the item (the same owner check as for caches).
