@@ -77,6 +77,9 @@ struct ItemRowView: View {
                     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: item.linkTarget ?? item.path)])
                 }
             }
+            if item.path.hasPrefix("/") {
+                Button("Don't Show Again") { model.ignore(item) }
+            }
             if item.offersManualMove {
                 Button("Move to External Disk…") {
                     model.refreshDiskChoices()

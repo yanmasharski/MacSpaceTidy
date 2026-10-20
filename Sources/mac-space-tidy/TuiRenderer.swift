@@ -8,7 +8,7 @@ extension TuiApp {
     private static let ITEM_PREFIX_WIDTH = 21
     private static let SIZE_WIDTH = 10
     private static let CATEGORY_PREFIX_WIDTH = 9
-    private static let MAIN_KEYS = "↑↓ move  space check  enter open  m move/delete  b back  x fix  d disk  s scan  o optimize  q quit"
+    private static let MAIN_KEYS = "↑↓ move  space check  enter open  m move/delete  b back  i ignore  x fix  d disk  s scan  o optimize  q quit"
     private static let CONFIRM_KEYS = "enter run  t Trash/Delete now  d disk  ↑↓ scroll  esc back"
 
     func render(width: Int, height: Int) -> [String] {

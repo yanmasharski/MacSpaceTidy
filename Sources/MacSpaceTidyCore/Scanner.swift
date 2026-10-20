@@ -33,9 +33,10 @@ public enum Scanner {
             items[item.path] = item
         }
         // With a disk missing, its apps cannot be seen, so their data would look like leftovers.
+        let ignored = IgnoreList.read(options: options) ?? []
         let leftovers = problems.contains { $0.kind == .diskNotMounted }
             ? [] : LeftoverScanner.items(catalog: catalog, options: options, progress: progress)
-        for item in leftovers {
+        for item in leftovers where !IgnoreList.isIgnored(item.path, in: ignored) {
             // A leftover replaces a plain cache item of the same path. Inside a listed folder (Containers) it is
             // taken out of that folder's size, so the disk bar does not count it twice.
             let parentPath = (item.path as NSString).deletingLastPathComponent
@@ -60,7 +61,7 @@ public enum Scanner {
                 problems.append(problem)
             }
         }
-        let sortedItems = items.values.sorted { first, second in
+        let sortedItems = items.values.filter { !IgnoreList.isIgnored($0.path, in: ignored) }.sorted { first, second in
             if first.size.bytes != second.size.bytes {
                 return first.size.bytes > second.size.bytes
             }

@@ -130,6 +130,7 @@ final class TuiApp {
         case .enter, .right, .left: expandOrCollapse(current, key: key, rows: rows)
         case .character("m"): switchMoveOrDelete(current)
         case .character("b"): askMoveBack(current)
+        case .character("i"): askIgnore(current)
         case .character("x"): askFix(current)
         case .character("d"): nextDisk()
         case .character("s"): startScan()
@@ -230,6 +231,25 @@ final class TuiApp {
             : "Some apps delete and recreate their cache folder, and that removes the link."
         question = Question(text: "Move \(item.title) to the external disk now? \(why) (y/n)") { [weak self] in
             self?.startOptimize([item.with(action: .move)])
+        }
+    }
+
+    private func askIgnore(_ row: TuiRow?) {
+        guard case .item(let item) = row, item.path.hasPrefix("/") else {
+            message = "Select an item with a folder path first."
+            return
+        }
+        let file = PathTools.abbreviate(options.ignorePath, home: options.home)
+        question = Question(text: "Hide \(item.title) for good? It is never listed or cleaned again. To undo, delete its line in \(file). (y/n)") { [weak self] in
+            guard let self else {
+                return
+            }
+            do {
+                try IgnoreList.add(item.path, options: self.options)
+                self.startScan()
+            } catch {
+                self.message = "Could not save the ignore list: \(error.localizedDescription)"
+            }
         }
     }
 

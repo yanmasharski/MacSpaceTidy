@@ -120,6 +120,16 @@ final class AppModel {
         }
     }
 
+    /// Hides the item for good: it is never listed or cleaned again. The user undoes it by editing the ignore file.
+    func ignore(_ item: ScanItem) {
+        do {
+            try IgnoreList.add(item.path, options: .standard())
+            scan()
+        } catch {
+            errorText = "Could not save the ignore list: \(error.localizedDescription)"
+        }
+    }
+
     func optimize() {
         run(selectedItems)
     }

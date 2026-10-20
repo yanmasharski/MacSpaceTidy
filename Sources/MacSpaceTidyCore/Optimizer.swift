@@ -53,12 +53,14 @@ public struct Optimizer: Sendable {
                 break
             }
             progress?(index, item, "")
-            let status = perform(item, mode: mode, diskRoot: diskRoot) { stage in progress?(index, item, stage) }
+            let status = ignoreRefusal(item).map(ItemOutcome.Status.skipped)
+                ?? perform(item, mode: mode, diskRoot: diskRoot) { stage in progress?(index, item, stage) }
             outcomes.append(ItemOutcome(item: item, status: status))
+            log(item, status, mode: mode)
         }
         if !wasCancelled {
             for item in items where item.needsAdmin {
-                if let reason = refusalReason(item) {
+                if let reason = ignoreRefusal(item) ?? refusalReason(item) {
                     outcomes.append(ItemOutcome(item: item, status: .skipped(reason)))
                 } else {
                     adminItems.append(item)
@@ -71,10 +73,40 @@ public struct Optimizer: Sendable {
             for item in adminItems {
                 let status: ItemOutcome.Status = FolderCleaner.isClean(item.path) ? .done : .failed(error ?? "The folder is not empty.")
                 outcomes.append(ItemOutcome(item: item, status: status))
+                log(item, status, mode: .deleteNow)
             }
         }
         let diskAfter = DiskSpace.read(path: options.home) ?? diskBefore
         return OptimizeResult(outcomes: outcomes, diskBefore: diskBefore, diskAfter: diskAfter, wasCancelled: wasCancelled)
+    }
+
+    /// Nil when the item is not in the user's ignore list. An unreadable list refuses everything.
+    private func ignoreRefusal(_ item: ScanItem) -> String? {
+        guard item.path.hasPrefix("/") else {
+            return nil
+        }
+        guard let list = IgnoreList.read(options: options) else {
+            return "The ignore list could not be read."
+        }
+        return IgnoreList.isIgnored(item.path, in: list) ? "It is in your ignore list." : nil
+    }
+
+    /// Writes finished cleans to the clean log. Skipped items did nothing, so they are not logged. Moves have their own journal.
+    private func log(_ item: ScanItem, _ status: ItemOutcome.Status, mode: DeleteMode) {
+        let action: String
+        switch item.action {
+        case .trashOnly: action = "trash"
+        case .delete, .cleanExternal, .deleteExternalCopy: action = mode == .trash && !item.needsAdmin ? "trash" : "delete"
+        case .deleteSimulatorRuntime: action = "delete"
+        default: return
+        }
+        let result: String
+        switch status {
+        case .done: result = "done"
+        case .failed(let reason): result = "failed: \(reason)"
+        case .skipped: return
+        }
+        try? CleanLog.append(CleanLog.Record(date: Date(), action: action, path: item.path, bytes: item.size.bytes, result: result), to: options.cleanLogPath)
     }
 
     /// Nil when the item may be deleted now.

@@ -70,6 +70,8 @@ Other ways may suit you better. This tool is about my way.
   They are never checked for you and always go to the Trash. Or move them to the external disk.
 - **Finds leftovers of removed apps.** Data in `~/Library` that belongs to no installed app, and a Wine prefix when
   Wine is gone. Never checked for you, and always goes to the Trash.
+- **Remembers what you skip, and what it did.** Hide an item for good with `i` (terminal) or Don't Show Again
+  (right-click). Every Trash, delete, and move is written to a history you can read with `mac-space-tidy history`.
 - **Moves big folders.** To your external SSD, behind a link. Big developer caches can be moved or deleted —
   moving is the default when a disk is set.
 - **Moves them back.** One button per moved folder.
@@ -178,6 +180,7 @@ swift build -c release
 | Enter | Open or close a category |
 | m | Switch a big cache between Move and Delete, or move any big item by hand |
 | b | Move a moved folder back |
+| i | Hide the selected item for good (an ignore list; delete its line in `ignore.txt` to undo) |
 | x | Fix the selected problem |
 | d | Choose the external disk |
 | s | Scan again |
@@ -190,6 +193,8 @@ A plain read-only report for scripts:
 mac-space-tidy scan              # biggest items per category
 mac-space-tidy scan --all        # every item
 mac-space-tidy scan --moved-sizes  # also measure folders on external disks (slow)
+mac-space-tidy scan --json       # the same report as JSON
+mac-space-tidy history           # what was moved, trashed, or deleted (--all for everything, --json for scripts)
 ```
 
 ---
@@ -216,6 +221,9 @@ Design decisions: [docs/design.md](docs/design.md).
   your free space and cleans stale developer caches, simulator runtimes, and git worktrees left by coding agents
   (Claude Code, Codex, Cursor). It only deletes; MacSpaceTidy also moves folders to an external disk.
   If you need to clean worktrees, or want a watcher in the menu bar, look at SpaceGuard.
+- **[Mole](https://github.com/tw93/Mole)** by [tw93](https://github.com/tw93). A command-line cleaner and uninstaller for
+  Mac with a dry run, project build folders (`node_modules`, `target`), installer files, and a live system monitor.
+  If you want to clean build folders of old projects or watch CPU and memory, look at Mole.
 
 ## Thanks
 
@@ -223,6 +231,8 @@ Design decisions: [docs/design.md](docs/design.md).
   with `getattrlistbulk` for fast size counts, a screenshot mode for the README, a longer list of known cache
   locations, not checking caches that were used in the last days, and a retry for read-only trees such as the Go
   module cache. The code here is written separately.
+- [tw93](https://github.com/tw93) and Mole gave me ideas, taken from its README only (no code): a list of things to
+  skip for good, a history of what was cleaned, and JSON output for scripts. The code here is written separately.
 
 ## License
 

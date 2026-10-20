@@ -3,12 +3,17 @@ import MacSpaceTidyCore
 
 private let USAGE = """
 Usage: mac-space-tidy               Full-screen interface: scan, check items, optimize.
-       mac-space-tidy scan [--all] [--moved-sizes]
+       mac-space-tidy scan [--all] [--moved-sizes] [--json]
+       mac-space-tidy history [--all] [--json]
 
   scan            Read-only report: disk use, problems, and what is safe to clean or move.
-  --all           Show every item, not only the biggest ones in each category.
+  --all           Show every item, not only the biggest ones (scan), or the whole log (history).
   --moved-sizes   Also measure folders already on an external disk (slow).
+  --json          Print JSON instead of text, for scripts.
+  history         What was moved, trashed, or deleted, newest last. The last \(HISTORY_LINES) entries unless --all.
 """
+
+private let HISTORY_LINES = 50
 
 private let ITEMS_PER_CATEGORY = 10
 private let ACTION_COLUMN_WIDTH = 7
@@ -103,18 +108,117 @@ private func printReport(_ report: ScanReport, showsAll: Bool, measuresMovedItem
     print("\nChecked by default (safe): \(formatBytes(safeBytes)). Freed space is measured with df after the action.")
 }
 
-private func runScan(showsAll: Bool, measuresMovedItems: Bool) -> Int32 {
+private struct JsonItem: Encodable {
+    let path: String
+    let title: String
+    let category: ItemCategory
+    let action: ItemAction
+    let risk: Risk
+    let bytes: Int64
+    let isIncomplete: Bool
+    let checkedByDefault: Bool
+    let needsAdmin: Bool
+    let linkTarget: String?
+    let reason: String
+}
+
+private struct JsonProblem: Encodable {
+    let kind: String
+    let path: String?
+    let detail: String
+}
+
+private struct JsonReport: Encodable {
+    let totalBytes: Int64
+    let usedBytes: Int64
+    let freeBytes: Int64
+    let problems: [JsonProblem]
+    let items: [JsonItem]
+}
+
+private func jsonText(_ value: some Encodable, dates: Bool = false) -> String {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+    if dates {
+        encoder.dateEncodingStrategy = .iso8601
+    }
+    return (try? encoder.encode(value)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+}
+
+private func printJson(_ report: ScanReport) {
+    let items = report.items.filter { $0.category != .system }.map { item in
+        JsonItem(
+            path: item.path, title: item.title, category: item.category, action: item.action, risk: item.risk, bytes: item.size.bytes,
+            isIncomplete: item.size.isIncomplete, checkedByDefault: item.checkedByDefault, needsAdmin: item.needsAdmin,
+            linkTarget: item.linkTarget, reason: item.reason
+        )
+    }
+    let problems = report.problems.map { JsonProblem(kind: $0.kind.rawValue, path: $0.path, detail: $0.detail) }
+    print(jsonText(JsonReport(
+        totalBytes: report.disk.totalBytes, usedBytes: report.disk.usedBytes, freeBytes: report.disk.freeBytes, problems: problems, items: items
+    )))
+}
+
+private struct HistoryRow: Encodable {
+    let date: Date
+    let action: String
+    let path: String
+    let bytes: Int64?
+    let result: String
+}
+
+private func historyRows() -> [HistoryRow] {
+    let options = ScanOptions.standard()
+    let cleans = CleanLog.read(from: options.cleanLogPath).map {
+        HistoryRow(date: $0.date, action: $0.action, path: $0.path, bytes: $0.bytes, result: $0.result)
+    }
+    let moves = MoveJournal.read(from: options.journalPath).map { record in
+        let isMove = record.kind == MoveJournal.KIND_MOVE
+        return HistoryRow(date: record.date, action: isMove ? "move" : "move back", path: isMove ? record.source : record.destination, bytes: nil, result: "done")
+    }
+    return (cleans + moves).sorted { $0.date < $1.date }
+}
+
+private func runHistory(showsAll: Bool, asJson: Bool) -> Int32 {
+    let rows = historyRows()
+    let shown = showsAll ? rows : Array(rows.suffix(HISTORY_LINES))
+    if asJson {
+        print(jsonText(shown, dates: true))
+        return 0
+    }
+    if shown.isEmpty {
+        print("Nothing was cleaned or moved yet.")
+        return 0
+    }
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd HH:mm"
+    for row in shown {
+        let size = padLeft(row.bytes.map(formatBytes) ?? "", SIZE_COLUMN_WIDTH)
+        let result = row.result == "done" ? "" : "  (\(row.result))"
+        let action = row.action.padding(toLength: 9, withPad: " ", startingAt: 0)
+        print("\(formatter.string(from: row.date))  \(action) \(size)  \(PathTools.abbreviate(row.path, home: NSHomeDirectory()))\(result)")
+    }
+    return 0
+}
+
+private func runScan(showsAll: Bool, measuresMovedItems: Bool, asJson: Bool) -> Int32 {
     var options = ScanOptions.standard()
     options.measuresMovedItems = measuresMovedItems
     do {
         let catalog = try Catalog.loadBundled()
-        var report = try Scanner.scan(catalog: catalog, options: options) { step in
-            showProgress(step)
-        }
-        if measuresMovedItems {
-            report = ExternalScanner.scan(report: report, catalog: catalog, options: options) { step in
+        // Progress text goes to stderr; JSON output stays clean for a pipe.
+        let progress: MacSpaceTidyCore.Scanner.Progress = { step in
+            if !asJson {
                 showProgress(step)
             }
+        }
+        var report = try Scanner.scan(catalog: catalog, options: options, progress: progress)
+        if measuresMovedItems {
+            report = ExternalScanner.scan(report: report, catalog: catalog, options: options, progress: progress)
+        }
+        if asJson {
+            printJson(report)
+            return 0
         }
         FileHandle.standardError.write(Data("\u{1B}[2K\r".utf8))
         printReport(report, showsAll: showsAll, measuresMovedItems: measuresMovedItems)
@@ -137,12 +241,19 @@ case nil where Terminal.isInteractive:
     }
 case "scan", nil:
     let flags = Set(arguments.dropFirst())
-    let knownFlags: Set<String> = ["--all", "--moved-sizes"]
+    let knownFlags: Set<String> = ["--all", "--moved-sizes", "--json"]
     guard flags.isSubset(of: knownFlags) else {
         print(USAGE)
         exit(2)
     }
-    exit(runScan(showsAll: flags.contains("--all"), measuresMovedItems: flags.contains("--moved-sizes")))
+    exit(runScan(showsAll: flags.contains("--all"), measuresMovedItems: flags.contains("--moved-sizes"), asJson: flags.contains("--json")))
+case "history":
+    let flags = Set(arguments.dropFirst())
+    guard flags.isSubset(of: ["--all", "--json"]) else {
+        print(USAGE)
+        exit(2)
+    }
+    exit(runHistory(showsAll: flags.contains("--all"), asJson: flags.contains("--json")))
 default:
     print(USAGE)
     exit(2)

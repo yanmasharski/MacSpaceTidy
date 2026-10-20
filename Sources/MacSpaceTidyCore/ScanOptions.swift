@@ -44,6 +44,16 @@ public struct ScanOptions: Sendable {
         return (home as NSString).appendingPathComponent("Library/Application Support/MacSpaceTidy/moves.jsonl")
     }
 
+    /// Paths the user wants hidden and never cleaned. See `IgnoreList`.
+    public var ignorePath: String {
+        return (home as NSString).appendingPathComponent("Library/Application Support/MacSpaceTidy/ignore.txt")
+    }
+
+    /// One JSON line per cleaned item. See `CleanLog`.
+    public var cleanLogPath: String {
+        return (home as NSString).appendingPathComponent("Library/Application Support/MacSpaceTidy/cleanups.jsonl")
+    }
+
     /// Sizes of folders on external disks from the last scan. Shown at once while a new count runs.
     public var sizeCachePath: String {
         return (home as NSString).appendingPathComponent("Library/Application Support/MacSpaceTidy/sizes.json")

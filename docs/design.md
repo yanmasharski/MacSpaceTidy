@@ -250,3 +250,15 @@ External disk not mounted at login. Disk full during copy. App running during a 
 Case-insensitive file names. Hard links and APFS clones (size reports). Sandboxed apps in `Containers/`.
 Cloud folders (iCloud, Google Drive). Time Machine snapshots holding freed space.
 The tool must never move itself or its own config.
+
+### Ignore list and history (ideas from the Mole README, written separately)
+
+- **Ignore list** (`IgnoreList`): `~/Library/Application Support/MacSpaceTidy/ignore.txt`, one path per line, `~` allowed,
+  `#` starts a comment. A listed path and everything inside it is hidden from the scan, and the Optimizer refuses it
+  even if a stale item reaches it. If the file exists but cannot be read, every clean is refused (fail closed).
+  Added with `i` in the terminal or Don't Show Again in the app. Undo by deleting the line.
+- **Clean log** (`CleanLog`): `cleanups.jsonl` next to the move journal. One line per finished or failed Trash/delete
+  (date, action, path, bytes, result). Skipped items are not logged. `mac-space-tidy history` shows it together with moves.
+- **`scan --json`**: the report as JSON, with no progress text, for scripts.
+- Looked at and left for later: project build folders (`node_modules`, `target`) grouped by project, installer files
+  outside Downloads, emptying the Trash as an item, and uninstalling an app together with its data.
