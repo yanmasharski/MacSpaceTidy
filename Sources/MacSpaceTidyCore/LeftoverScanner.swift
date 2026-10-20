@@ -21,11 +21,13 @@ public enum LeftoverScanner {
 
     public static func items(catalog: Catalog, options: ScanOptions, progress: Scanner.Progress? = nil) -> [ScanItem] {
         let installed = installedIds(options: options)
+        // A path the catalog names itself (like the Whisky folder) keeps its own action.
+        let ownPaths = Set(catalog.entries.filter { !$0.isChildrenPattern }.map { PathTools.expand($0.path, home: options.home) })
         var result: [ScanItem] = []
         for folder in folders(options: options) {
             for path in PathTools.children(of: folder) {
                 let name = (path as NSString).lastPathComponent
-                guard let id = appId(ofName: name), !PathTools.isSymlink(path), !catalog.isProtected(path, home: options.home),
+                guard let id = appId(ofName: name), !ownPaths.contains(path), !PathTools.isSymlink(path), !catalog.isProtected(path, home: options.home),
                       !isInstalled(id, among: installed, options: options) else {
                     continue
                 }

@@ -51,6 +51,21 @@ struct LeftoverScannerTests {
         #expect(items.allSatisfy { $0.category == .leftovers && $0.action == .trashOnly && !$0.checkedByDefault && !$0.canMove })
     }
 
+    @Test func aFolderThatTheCatalogNamesKeepsItsOwnAction() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        try fixture.library("Application Support/com.isaacmarovitz.Whisky")
+        let whisky = CatalogEntry(
+            id: "whisky", path: "~/Library/Application Support/com.isaacmarovitz.Whisky", category: .apps, action: .move, risk: .medium,
+            checkedByDefault: false, needsAdmin: false, ownerApps: [], reason: "test"
+        )
+
+        let report = try Scanner.scan(catalog: Catalog(entries: [whisky]), options: fixture.options)
+
+        #expect(report.items(in: .leftovers).isEmpty)
+        #expect(report.items(in: .apps).count == 1)
+    }
+
     @Test func aLeftoverInsideContainersIsTakenOutOfTheParentSize() throws {
         let fixture = try Fixture()
         defer { fixture.temp.remove() }
