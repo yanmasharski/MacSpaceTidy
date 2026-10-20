@@ -70,7 +70,7 @@ extension TuiApp {
         var segments: [(title: String, bytes: Int64, color: Int)] = []
         var knownBytes: Int64 = 0
         for category in ItemCategory.allCases where category.isOnInternalDisk {
-            let bytes = report.totalBytes(in: category)
+            let bytes = report.internalBytes(in: category)
             if bytes > 0 {
                 knownBytes += bytes
                 segments.append((category.title, bytes, T.colorCode(category)))

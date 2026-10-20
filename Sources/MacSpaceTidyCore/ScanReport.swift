@@ -20,6 +20,11 @@ public struct ScanReport: Sendable {
         return items(in: category).reduce(0) { $0 + $1.size.bytes }
     }
 
+    /// Bytes that really sit on the internal disk. An item behind a link to an external disk is not counted.
+    public func internalBytes(in category: ItemCategory) -> Int64 {
+        return items(in: category).filter { $0.linkTarget == nil }.reduce(0) { $0 + $1.size.bytes }
+    }
+
     /// True when some folders could not be read. The UI then asks for Full Disk Access.
     public var hasUnreadableFolders: Bool {
         return items.contains { $0.size.isIncomplete }

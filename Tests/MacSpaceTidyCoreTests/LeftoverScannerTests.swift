@@ -51,6 +51,90 @@ struct LeftoverScannerTests {
         #expect(items.allSatisfy { $0.category == .leftovers && $0.action == .trashOnly && !$0.checkedByDefault && !$0.canMove })
     }
 
+    @Test func foldersOfApplicationSupportAreJudgedByTheNameOfInstalledApps() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        let big = 21_000_000
+        try fixture.install("Kept Tool", id: "com.vendor.KeptTool")
+        try fixture.install("Google Chrome", id: "com.google.Chrome")
+        try fixture.install("ChatGPT", id: "com.openai.codex")
+        try fixture.install("Epic Games Launcher", id: "com.epicgames.EpicGamesLauncher")
+        for name in ["Kept Tool", "Google", "vendor", "Codex", "Epic", "Chromium", "MobileSync", "Small Leftover", "com.apple.wallpaper"] {
+            try fixture.library("Application Support/\(name)", bytes: name == "Small Leftover" ? 5_000_000 : big)
+        }
+        try fixture.library("Caches/Chromium", bytes: big)
+
+        let items = LeftoverScanner.items(catalog: Catalog(entries: []), options: fixture.options)
+
+        // Only Chromium: the others match an app name or its vendor, belong to macOS, or are too small to judge by name.
+        #expect(items.map(\.title) == ["~/Library/Application Support/Chromium"])
+        #expect(items.allSatisfy { $0.risk == .high && !$0.checkedByDefault && $0.action == .trashOnly })
+    }
+
+    @Test func aWinePrefixIsALeftoverOnlyWhenWineIsNotInstalled() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        try fixture.temp.makeFile("home/.wine/system.reg", bytes: LeftoverScannerTests.BIG_BYTES)
+        let catalog = Catalog(entries: [])
+
+        #expect(LeftoverScanner.items(catalog: catalog, options: fixture.options).map(\.title) == ["~/.wine"])
+        try fixture.install("Wine Stable", id: "org.winehq.wine-stable")
+        #expect(LeftoverScanner.items(catalog: catalog, options: fixture.options).isEmpty)
+    }
+
+    @Test func aFolderNamedWineWithoutAWinePrefixInsideIsLeftAlone() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        try fixture.temp.makeFile("home/.wine/notes.txt", bytes: LeftoverScannerTests.BIG_BYTES)
+
+        #expect(LeftoverScanner.items(catalog: Catalog(entries: []), options: fixture.options).isEmpty)
+    }
+
+    @Test func aWinePrefixBehindALinkGoesToTheTrashTogetherWithTheLink() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        let name = "mst-wine-\(UUID().uuidString)"
+        let target = try fixture.temp.makeFolder("Volumes/SSD/\(name)")
+        try fixture.temp.makeFile("Volumes/SSD/\(name)/system.reg", bytes: LeftoverScannerTests.BIG_BYTES)
+        try fixture.temp.makeLink("home/.wine", to: target)
+        let trashedCopy = (NSHomeDirectory() as NSString).appendingPathComponent(".Trash/\(name)")
+        defer { try? FileManager.default.removeItem(atPath: trashedCopy) }
+        let catalog = Catalog(entries: [])
+        let report = try Scanner.scan(catalog: catalog, options: fixture.options)
+        let item = try #require(report.items(in: .leftovers).first)
+        #expect(item.linkTarget == target && item.size.bytes >= LeftoverScannerTests.BIG_BYTES)
+        // The folder is on the external disk, so it does not count in the internal disk bar.
+        #expect(report.internalBytes(in: .leftovers) == 0)
+        #expect(report.items(in: .alreadyMoved).isEmpty)
+        let optimizer = Optimizer(catalog: catalog, options: fixture.options, ownerCheck: { _ in nil })
+
+        let result = optimizer.run(items: [item], mode: .deleteNow, isCancelled: { false })
+
+        #expect(result.outcomes.map(\.status) == [.done])
+        #expect(!PathTools.exists(fixture.temp.sub("home/.wine")))
+        #expect(!PathTools.exists(target))
+        #expect(PathTools.exists(trashedCopy))
+    }
+
+    @Test func aWineLinkToAnythingButAnExternalPrefixIsRefused() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        let elsewhere = try fixture.temp.makeFolder("home/Documents/important")
+        try fixture.temp.makeFile("home/Documents/important/system.reg", bytes: LeftoverScannerTests.BIG_BYTES)
+        try fixture.temp.makeLink("home/.wine", to: elsewhere)
+        let optimizer = Optimizer(catalog: Catalog(entries: []), options: fixture.options, ownerCheck: { _ in nil })
+        let forged = ScanItem(
+            path: fixture.temp.sub("home/.wine"), title: "~/.wine", catalogId: nil, category: .leftovers, action: .trashOnly, risk: .medium,
+            checkedByDefault: false, needsAdmin: false, ownerApps: [], reason: "test", size: FolderSize(bytes: 1, isIncomplete: false), linkTarget: elsewhere
+        )
+
+        #expect(LeftoverScanner.items(catalog: Catalog(entries: []), options: fixture.options).isEmpty)
+        let result = optimizer.run(items: [forged], mode: .deleteNow, isCancelled: { false })
+
+        #expect(result.outcomes.map(\.status) == [.skipped("The Wine link does not point to a folder on a connected external disk.")])
+        #expect(PathTools.exists(elsewhere))
+    }
+
     @Test func aFolderThatTheCatalogNamesKeepsItsOwnAction() throws {
         let fixture = try Fixture()
         defer { fixture.temp.remove() }

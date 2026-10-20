@@ -60,7 +60,7 @@ struct DiskBarView: View {
         var segments: [Segment] = []
         var knownBytes: Int64 = 0
         for category in ItemCategory.allCases where category.isOnInternalDisk {
-            let bytes = report.totalBytes(in: category)
+            let bytes = report.internalBytes(in: category)
             guard bytes > 0 else {
                 continue
             }

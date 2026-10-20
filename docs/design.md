@@ -133,19 +133,32 @@ Terminal keys: arrows move, space toggles, Enter expands, `s` scans, `o` optimiz
 
 ### Leftovers of removed apps (`LeftoverScanner`)
 
-Apps leave data in `~/Library` after you drag them to the Trash.
+Apps leave data behind after you drag them to the Trash. Three kinds, from the most to the least sure:
 
-- Looked at: direct entries of `~/Library/` `Application Support`, `Caches`, `Containers`, `Group Containers`,
-  `WebKit`, `Logs`. Only names that are bundle ids (`com.vendor.App`, also `group.…` and `TEAMID.…`) are judged.
-  Names of other kinds ("Slack", "Google") are not: matching them to apps by name gives too many false hits.
-- A folder is a leftover when no installed app has that id. Installed means: an `.app` in `ScanOptions.appFolders`
-  (depth 3), a running app, a Launch Services answer, or a launch plist. An id also matches when one is the start of
-  the other (`com.vendor.App.helper`, vendor folders). `com.apple.*` is never listed. Entries under 1 MB are skipped.
-- A wrong "installed" answer only hides a leftover. A wrong "not installed" answer could delete live data, so every
-  check leans to "installed". Never checked by default, risk medium, always to the Trash (`ItemAction.trashOnly`).
-- Only direct entries of those folders can be trashed (`Optimizer.refusalReason`).
-- A leftover replaces the plain cache item of the same path, and its size is taken out of a listed parent folder
-  (`~/Library/Containers`), so the disk bar does not count it twice.
+1. **Bundle id folders.** Direct entries of `~/Library/` `Application Support`, `Caches`, `Containers`, `Group Containers`,
+   `WebKit`, `Logs`, named by a bundle id (`com.vendor.App`, also `group.…` and `TEAMID.…`), when no installed app has
+   that id. Risk medium. `com.apple.*` is never listed. Entries under 1 MB are skipped.
+2. **Wine prefix.** `~/.wine` when it holds `system.reg` and Wine is not installed (no Wine app or CrossOver, no `wine`
+   binary). It may be a link to a folder on an external disk: then the link and the folder go to the Trash together,
+   and only if the link points to a folder inside a connected external disk (`Optimizer.refusalReason`). Risk medium.
+3. **Name match.** Folders of `Application Support` that no installed app is named after. An app name, executable,
+   the vendor or last part of its id, or a name that starts the other (`Epic` / `EpicGamesLauncher`) counts as a match.
+   macOS folders (iPhone backups, contacts, the Dock) are never judged. Folders under 20 MB are skipped. Risk high.
+
+Installed means: an `.app` in `ScanOptions.appFolders` or in `<disk>/Applications` (depth 3), a running app, a Launch
+Services answer, or a launch plist. An id also matches when one is the start of the other (`com.vendor.App.helper`).
+
+Safety rules:
+- Every check leans to "installed": a wrong "installed" only hides a leftover, a wrong "not installed" could trash live data.
+- With any linked disk missing, the search is skipped: apps on that disk cannot be seen.
+- Never checked by default. Always to the Trash (`ItemAction.trashOnly`), even when the delete setting is "Delete now".
+  Only direct entries of those folders, and the Wine prefix, can be trashed.
+- A running app that owns the folder blocks the item (the same owner check as for caches).
+- A path that the catalog names itself (Whisky, Steam) keeps its own action. Only the generic `Caches/*` and `Logs/*`
+  children are replaced.
+- A leftover inside a listed parent (`~/Library/Containers`) is taken out of the parent's size. An item behind a link
+  to an external disk is not counted in the internal disk bar.
+- Not covered: other dot-folders in the home folder (`~/.antigravity-ide`, `~/.plastic4`). They have no id or app name to match.
 
 ### What gets actions
 

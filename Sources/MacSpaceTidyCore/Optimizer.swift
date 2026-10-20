@@ -87,9 +87,13 @@ public struct Optimizer: Sendable {
         }
         // Your own files and leftovers: only direct entries of the Downloads folder or of the leftover folders,
         // and never a folder with a git repository inside.
-        let trashParents = [options.downloadsPath] + LeftoverScanner.folders(options: options)
-        if item.action == .trashOnly && !trashParents.contains((item.path as NSString).deletingLastPathComponent) {
+        if item.action == .trashOnly
+            && (item.path as NSString).deletingLastPathComponent != options.downloadsPath && !LeftoverScanner.canTrash(item.path, options: options) {
             return "Only entries of the Downloads folder and of the leftover folders can be trashed."
+        }
+        // The Wine prefix may be a link to an external disk. Then the link and the folder go together.
+        if item.action == .trashOnly && PathTools.isSymlink(item.path) && item.path == LeftoverScanner.winePrefix(options: options) {
+            return LeftoverScanner.linkedPrefixRefusal(options: options)
         }
         if catalog.isProtected(item.path, home: options.home) {
             return "Protected path."
@@ -144,7 +148,12 @@ public struct Optimizer: Sendable {
             }
             stage("Moving to the Trash")
             do {
-                try FolderCleaner.remove(item.path, mode: .trash)
+                if PathTools.isSymlink(item.path), let target = PathTools.linkTarget(item.path) {
+                    try FolderCleaner.remove(target, mode: .trash)
+                    try FileManager.default.removeItem(atPath: item.path)
+                } else {
+                    try FolderCleaner.remove(item.path, mode: .trash)
+                }
                 return .done
             } catch {
                 return .failed(error.localizedDescription)
