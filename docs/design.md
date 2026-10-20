@@ -260,5 +260,6 @@ The tool must never move itself or its own config.
 - **Clean log** (`CleanLog`): `cleanups.jsonl` next to the move journal. One line per finished or failed Trash/delete
   (date, action, path, bytes, result). Skipped items are not logged. `mac-space-tidy history` shows it together with moves.
 - **`scan --json`**: the report as JSON, with no progress text, for scripts.
+- Decided: the tool never empties the Trash. The user does it, and the confirm window says the space is freed after that.
 - Looked at and left for later: project build folders (`node_modules`, `target`) grouped by project, installer files
-  outside Downloads, emptying the Trash as an item, and uninstalling an app together with its data.
+  outside Downloads, and uninstalling an app together with its data.
