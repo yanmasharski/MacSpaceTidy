@@ -5,6 +5,8 @@ public struct ScanOptions: Sendable {
     public static let LARGE_UNKNOWN_BYTES: Int64 = 1_000_000_000
     /// Children of a `/*` pattern smaller than this are hidden as noise.
     public static let MIN_CHILD_ITEM_BYTES: Int64 = 1_000_000
+    public static let PROJECT_MIN_BYTES: Int64 = 10_000_000
+    private static let DEFAULT_PROJECT_FOLDERS = ["Developer", "Projects", "Work", "Code", "dev", "src", "repos", "GitHub", "Documents/GitHub", "Documents/Projects"]
 
     public var home: String
     public var disks: ExternalDisks
@@ -18,6 +20,10 @@ public struct ScanOptions: Sendable {
     public var usesSystemTools: Bool
     /// Measure folders that are already on an external disk. Slow: minutes for hundreds of GB.
     public var measuresMovedItems: Bool
+    /// Folders searched for projects (build folders). More can be added in `project-roots.txt`.
+    public var projectRoots: [String]
+    /// Build folders smaller than this are noise.
+    public var projectMinBytes: Int64
     /// Folders searched for installed apps. Their bundle ids tell which `~/Library` folders are leftovers.
     public var appFolders: [String]
 
@@ -32,6 +38,8 @@ public struct ScanOptions: Sendable {
         self.usesSystemTools = usesSystemTools
         self.measuresMovedItems = false
         self.appFolders = []
+        self.projectRoots = []
+        self.projectMinBytes = ScanOptions.PROJECT_MIN_BYTES
     }
 
     /// The folder with your downloads. Its old entries are listed one by one, never as a whole.
@@ -47,6 +55,11 @@ public struct ScanOptions: Sendable {
     /// Paths the user wants hidden and never cleaned. See `IgnoreList`.
     public var ignorePath: String {
         return (home as NSString).appendingPathComponent("Library/Application Support/MacSpaceTidy/ignore.txt")
+    }
+
+    /// Extra folders with your projects, one path per line. See `PathListFile`.
+    public var projectRootsPath: String {
+        return (home as NSString).appendingPathComponent("Library/Application Support/MacSpaceTidy/project-roots.txt")
     }
 
     /// One JSON line per cleaned item. See `CleanLog`.
@@ -68,6 +81,7 @@ public struct ScanOptions: Sendable {
             linkRoots: [home, "/Users/Shared", "/opt/homebrew"],
             usesSystemTools: true
         )
+        options.projectRoots = DEFAULT_PROJECT_FOLDERS.map { (home as NSString).appendingPathComponent($0) }
         options.appFolders = ["/Applications", "/System/Applications", (home as NSString).appendingPathComponent("Applications")]
         return options
     }

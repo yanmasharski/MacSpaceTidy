@@ -70,6 +70,12 @@ Other ways may suit you better. This tool is about my way.
   They are never checked for you and always go to the Trash. Or move them to the external disk.
 - **Finds leftovers of removed apps.** Data in `~/Library` that belongs to no installed app, and a Wine prefix when
   Wine is gone. Never checked for you, and always goes to the Trash.
+- **Finds build folders of your projects.** `node_modules`, `target`, `.build`, `Pods`, `build`, `dist`, and the Unity
+  `Library` folder, but only next to the file that proves it (`package.json`, `Cargo.toml`, `Package.swift`, …).
+  It looks in `~/Developer`, `~/Projects`, `~/Work`, `~/Code`, `~/dev`, `~/src`, `~/repos`, `~/GitHub`,
+  `~/Documents/GitHub` and `~/Documents/Projects`; add more folders, one path per line, in
+  `~/Library/Application Support/MacSpaceTidy/project-roots.txt`. A folder is skipped when git tracks a file inside,
+  when a signing key lies in it, or when it is a link. Never checked for you, and always goes to the Trash.
 - **Remembers what you skip, and what it did.** Hide an item for good with `i` (terminal) or Don't Show Again
   (right-click). Every Trash, delete, and move is written to a history you can read with `mac-space-tidy history`.
 - **Moves big folders.** To your external SSD, behind a link. Big developer caches can be moved or deleted —

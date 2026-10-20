@@ -17,6 +17,8 @@ public enum Scanner {
         var problems = ProblemFinder.linkProblems(links: links, disks: options.disks)
         let strayLinks = Set(problems.filter { $0.kind == .strayNestedLink }.compactMap { $0.path })
 
+        // The user's skip list. A folder cannot be hidden by it and counted at the same time.
+        let ignored = IgnoreList.read(options: options) ?? []
         var items: [String: ScanItem] = [:]
         for item in catalogItems(catalog: catalog, options: options, strayLinks: strayLinks, progress: progress) {
             items[item.path] = item
@@ -33,20 +35,10 @@ public enum Scanner {
             items[item.path] = item
         }
         // With a disk missing, its apps cannot be seen, so their data would look like leftovers.
-        let ignored = IgnoreList.read(options: options) ?? []
         let leftovers = problems.contains { $0.kind == .diskNotMounted }
             ? [] : LeftoverScanner.items(catalog: catalog, options: options, progress: progress)
-        for item in leftovers where !IgnoreList.isIgnored(item.path, in: ignored) {
-            // A leftover replaces a plain cache item of the same path. Inside a listed folder (Containers) it is
-            // taken out of that folder's size, so the disk bar does not count it twice.
-            let parentPath = (item.path as NSString).deletingLastPathComponent
-            if items[item.path] == nil, let parent = items[parentPath] {
-                let size = parent.size
-                items[parentPath] = parent.with(size: FolderSize(
-                    bytes: max(0, size.bytes - item.size.bytes), isIncomplete: size.isIncomplete, newestChange: size.newestChange
-                ))
-            }
-            items[item.path] = item
+        for item in leftovers + ProjectScanner.items(options: options, progress: progress) where !IgnoreList.isIgnored(item.path, in: ignored) {
+            add(item, into: &items)
         }
 
         if let problem = ProblemFinder.freeSpaceProblem(disk: disk) {
@@ -68,6 +60,25 @@ public enum Scanner {
             return first.title < second.title
         }
         return ScanReport(disk: disk, items: sortedItems, problems: problems)
+    }
+
+    /// Adds an item. One inside a listed folder (Containers, a whole project folder) is taken out of that folder's size,
+    /// so the disk bar does not count it twice. A new item with the same path as a listed one replaces it.
+    private static func add(_ item: ScanItem, into items: inout [String: ScanItem]) {
+        if items[item.path] == nil {
+            var folder = (item.path as NSString).deletingLastPathComponent
+            while folder != "/" && !folder.isEmpty {
+                if let parent = items[folder] {
+                    let size = parent.size
+                    items[folder] = parent.with(size: FolderSize(
+                        bytes: max(0, size.bytes - item.size.bytes), isIncomplete: size.isIncomplete, newestChange: size.newestChange
+                    ))
+                    break
+                }
+                folder = (folder as NSString).deletingLastPathComponent
+            }
+        }
+        items[item.path] = item
     }
 
     /// Concrete paths of an entry. A `/*` pattern skips children that have their own entry.

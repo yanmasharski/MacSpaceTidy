@@ -261,5 +261,21 @@ The tool must never move itself or its own config.
   (date, action, path, bytes, result). Skipped items are not logged. `mac-space-tidy history` shows it together with moves.
 - **`scan --json`**: the report as JSON, with no progress text, for scripts.
 - Decided: the tool never empties the Trash. The user does it, and the confirm window says the space is freed after that.
-- Looked at and left for later: project build folders (`node_modules`, `target`) grouped by project, installer files
-  outside Downloads, and uninstalling an app together with its data.
+- Looked at and left for later: installer files outside Downloads, and uninstalling an app together with its data.
+
+### Project build folders (`ProjectScanner`, idea from the Mole README, written separately)
+
+Rebuildable output of your projects. The point is that the tools create it again, so it is safe to remove when the checks pass.
+
+- Rules (folder, marker next to it): `node_modules` and `dist` (`package.json`), `target` (`Cargo.toml` or `pom.xml`),
+  `.build` (`Package.swift`), `build` (`build.gradle*` or `CMakeLists.txt`), `Pods` (`Podfile`), Unity `Library`
+  (`ProjectSettings/ProjectVersion.txt`). A folder with the same name but no marker is not listed. Nothing is searched
+  inside a build folder (they hold copies of other projects). Smaller than 10 MB: skipped.
+- Where: the usual project folders in the home folder, plus `project-roots.txt` (one path per line, like the ignore list).
+  Only roots on the internal disk inside the home folder or `/Users/Shared` count: the Optimizer refuses everything else.
+- Checks, at scan time and again right before the Trash (`ProjectScanner.refusal`): it sits inside a root, it is not a
+  link, no signing key or certificate (`.pem .p12 .pfx .jks .keystore .key .mobileprovision`) lies directly inside, and in a
+  git repository `git ls-files` finds nothing tracked inside. If git cannot answer, the folder is refused.
+- Never checked by default. The whole folder goes to the Trash in one step (`ItemAction.trashOnly`), even with "Delete now".
+  The reason line says when the project changed last, and warns "a build may be running" for today.
+- Not done: projects on an external disk (the tool only cleans the internal disk), and Python virtual environments.

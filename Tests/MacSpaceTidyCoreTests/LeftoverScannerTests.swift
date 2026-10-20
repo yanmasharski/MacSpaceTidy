@@ -102,9 +102,13 @@ struct LeftoverScannerTests {
         let trash = (NSHomeDirectory() as NSString).appendingPathComponent(".Trash")
         defer {
             try? FileManager.default.removeItem(atPath: trash + "/\(name).bin")
-            // The marker file is named system.reg in the Trash too; remove only the one that holds this test's marker.
-            for entry in PathTools.children(of: trash) where (try? String(contentsOfFile: entry, encoding: .utf8)) == marker {
-                try? FileManager.default.removeItem(atPath: entry)
+            // The marker file is named system.reg in the Trash too (a name with a number if that one is taken).
+            // The Trash cannot be listed, so each name is tried; only a file that holds this test's marker is removed.
+            for entry in ["system.reg"] + (2...9).map({ "system \($0).reg" }) {
+                let path = trash + "/" + entry
+                if (try? String(contentsOfFile: path, encoding: .utf8)) == marker {
+                    try? FileManager.default.removeItem(atPath: path)
+                }
             }
         }
         let catalog = Catalog(entries: [])
@@ -214,7 +218,7 @@ struct LeftoverScannerTests {
         // The delete setting is "delete now", and the folder still must go to the Trash. A file inside it is refused.
         let result = optimizer.run(items: [outsider, item], mode: .deleteNow, isCancelled: { false })
 
-        #expect(result.outcomes.map(\.status) == [.skipped("Only entries of the Downloads folder and of the leftover folders can be trashed."), .done])
+        #expect(result.outcomes.map(\.status) == [.skipped("Only entries of the Downloads folder, of the leftover folders, and build folders of projects can be trashed."), .done])
         #expect(!PathTools.exists(item.path))
         #expect(PathTools.exists(trashedCopy))
     }

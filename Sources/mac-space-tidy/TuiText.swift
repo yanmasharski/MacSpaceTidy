@@ -23,6 +23,7 @@ enum TuiText {
         case .apps: return 208
         case .downloads: return 178
         case .leftovers: return 175
+        case .projects: return 72
         case .simulators: return 205
         case .cleanInApp: return 37
         case .largeUnknown: return 137
