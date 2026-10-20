@@ -66,6 +66,23 @@ struct LeftoverScannerTests {
         #expect(report.items(in: .apps).count == 1)
     }
 
+    @Test func appsOnAnExternalDiskCountAsInstalledAndAMissingDiskStopsTheSearch() throws {
+        let fixture = try Fixture()
+        defer { fixture.temp.remove() }
+        let app = try fixture.temp.makeFolder("Volumes/SSD/Applications/Far.app/Contents")
+        (["CFBundleIdentifier": "com.vendor.Far"] as NSDictionary).write(toFile: app + "/Info.plist", atomically: true)
+        try fixture.library("Caches/com.vendor.Far")
+        try fixture.library("Caches/com.vendor.Gone")
+
+        let connected = LeftoverScanner.items(catalog: Catalog(entries: []), options: fixture.options)
+        #expect(connected.map(\.title) == ["~/Library/Caches/com.vendor.Gone"])
+
+        try fixture.temp.makeLink("home/.moved", to: fixture.temp.sub("Volumes/Unplugged/moved"))
+        let report = try Scanner.scan(catalog: Catalog(entries: []), options: fixture.options)
+        #expect(report.problems.contains { $0.kind == .diskNotMounted })
+        #expect(report.items(in: .leftovers).isEmpty)
+    }
+
     @Test func aLeftoverInsideContainersIsTakenOutOfTheParentSize() throws {
         let fixture = try Fixture()
         defer { fixture.temp.remove() }

@@ -75,7 +75,9 @@ public enum LeftoverScanner {
 
     static func installedIds(options: ScanOptions) -> Set<String> {
         var ids = Set<String>()
-        for folder in options.appFolders {
+        // Apps kept on an external disk (Applications there) count as installed while the disk is connected.
+        let diskApps = PathTools.children(of: options.disks.volumesRoot).map { ($0 as NSString).appendingPathComponent("Applications") }
+        for folder in options.appFolders + diskApps {
             collectAppIds(in: folder, depth: APP_SEARCH_DEPTH, into: &ids)
         }
         if options.usesSystemTools {

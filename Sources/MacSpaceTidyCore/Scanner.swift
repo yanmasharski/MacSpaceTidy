@@ -32,7 +32,10 @@ public enum Scanner {
         for item in DownloadsScanner.items(options: options, progress: progress) where items[item.path] == nil {
             items[item.path] = item
         }
-        for item in LeftoverScanner.items(catalog: catalog, options: options, progress: progress) {
+        // With a disk missing, its apps cannot be seen, so their data would look like leftovers.
+        let leftovers = problems.contains { $0.kind == .diskNotMounted }
+            ? [] : LeftoverScanner.items(catalog: catalog, options: options, progress: progress)
+        for item in leftovers {
             // A leftover replaces a plain cache item of the same path. Inside a listed folder (Containers) it is
             // taken out of that folder's size, so the disk bar does not count it twice.
             let parentPath = (item.path as NSString).deletingLastPathComponent
