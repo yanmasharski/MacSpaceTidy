@@ -167,10 +167,10 @@ extension TuiApp {
     private func itemSuffix(_ item: ScanItem) -> String {
         var suffix = ""
         if item.canMove {
-            if usableDiskRoot == nil {
-                suffix += "  (can move: press d)"
+            if plan.effectiveAction(item) != .move {
+                suffix += "  [Delete]"
             } else {
-                suffix += plan.effectiveAction(item, hasDisk: true) == .move ? "  [Move]" : "  [Delete]"
+                suffix += usableDiskRoot == nil ? "  [Move: no disk, skipped]" : "  [Move]"
             }
         } else if item.offersManualMove && usableDiskRoot != nil {
             suffix += "  (m: move by hand)"
@@ -252,12 +252,17 @@ extension TuiApp {
             body.append("")
         }
         if !moves.isEmpty {
-            body.append(T.BOLD + T.BLUE + T.fit("MOVE to external disk — \(moves.count) folders, \(ByteText.format(total(moves)))", width) + T.RESET)
-            body.append(T.DIM + T.fit("Nothing is lost: each folder is copied, checked, and replaced with a link. The link breaks when the disk is not connected.", width) + T.RESET)
+            if usableDiskRoot == nil {
+                body.append(T.BOLD + T.YELLOW + T.fit("SKIPPED, no external disk — \(moves.count) folders, \(ByteText.format(total(moves))) stay on this Mac", width) + T.RESET)
+                body.append(T.DIM + T.fit("Nothing is deleted instead. To free this space: press d to choose a disk, or m on an item to delete it.", width) + T.RESET)
+            } else {
+                body.append(T.BOLD + T.BLUE + T.fit("MOVE to external disk — \(moves.count) folders, \(ByteText.format(total(moves)))", width) + T.RESET)
+                body.append(T.DIM + T.fit("Nothing is lost: each folder is copied, checked, and replaced with a link. The link breaks when the disk is not connected.", width) + T.RESET)
+            }
             if let disk = diskChoices.first(where: { $0.path == usableDiskRoot }) {
                 body.append(T.fit("  Disk: \(disk.name), \(ByteText.format(disk.freeBytes)) free, \(disk.fileSystem)   (d: change)", width))
             } else {
-                body.append(T.YELLOW + T.fit("  No disk chosen. Press d. Until then these items are skipped.", width) + T.RESET)
+                body.append(T.YELLOW + T.fit("  No disk chosen. These items are skipped.", width) + T.RESET)
             }
             for item in moves {
                 body.append(itemLine(item, width: width))
@@ -344,6 +349,11 @@ extension TuiApp {
         }
         for outcome in result.outcomes where outcome.status == .done && outcome.item.action == .moveBack {
             lines.append(T.fit("  The copy on the external disk stays at \(outcome.item.linkTarget ?? "?"). Delete it when you are sure.", width))
+        }
+        let noDisk = result.outcomes.filter { $0.status == .skipped(Optimizer.NO_DISK_REASON) }
+        if !noDisk.isEmpty {
+            let bytes = noDisk.reduce(0) { $0 + $1.item.size.bytes }
+            lines.append(T.YELLOW + T.fit("  \(noDisk.count) moves skipped (\(ByteText.format(bytes))): no external disk. Press d to choose one, then optimize again.", width) + T.RESET)
         }
         let notDone = result.outcomes.filter { $0.status != .done }
         if !notDone.isEmpty {

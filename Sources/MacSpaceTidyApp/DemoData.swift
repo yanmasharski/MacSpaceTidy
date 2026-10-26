@@ -15,7 +15,7 @@ enum DemoData {
         model.report = report
         model.diskChoices = [DiskChoice(path: DISK_ROOT, name: "Backup SSD", fileSystem: "apfs", freeBytes: 520 * GB, problem: nil)]
         model.moveDiskRoot = DISK_ROOT
-        model.plan = PlanSelection.defaults(for: report.items, hasDisk: true)
+        model.plan = PlanSelection.defaults(for: report.items)
         model.initiallyExpanded = [.downloads, .developer]
     }
 

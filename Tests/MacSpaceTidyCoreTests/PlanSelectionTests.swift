@@ -22,24 +22,25 @@ struct PlanSelectionTests {
             item("empty-app-cache", action: .delete, checked: true, ageMatters: true, changed: nil),
         ]
 
-        let plan = PlanSelection.defaults(for: items, hasDisk: false, now: now)
+        let plan = PlanSelection.defaults(for: items, now: now)
 
         #expect(plan.selected == ["old-app-cache", "fresh-download-cache", "empty-app-cache"])
     }
 
-    @Test func prefersMoveOnlyWhenDiskIsSet() {
+    @Test func prefersMoveAndKeepsItWithoutDisk() {
         let items = [
             item("cache", action: .delete, checked: true, canMove: true),
             item("small", action: .delete, checked: true),
             item("moved", action: .moveBack, checked: true),
         ]
 
-        let withDisk = PlanSelection.defaults(for: items, hasDisk: true)
-        let withoutDisk = PlanSelection.defaults(for: items, hasDisk: false)
+        var plan = PlanSelection.defaults(for: items)
 
-        #expect(withDisk.selected == ["cache", "small"])
-        #expect(withDisk.chosenItems(from: items, hasDisk: true).map(\.action) == [.move, .delete])
-        #expect(withoutDisk.chosenItems(from: items, hasDisk: false).map(\.action) == [.delete, .delete])
+        #expect(plan.selected == ["cache", "small"])
+        #expect(plan.chosenItems(from: items).map(\.action) == [.move, .delete])
+
+        plan.setMove(items[0], false)
+        #expect(plan.chosenItems(from: items).map(\.action) == [.delete, .delete])
     }
 
     @Test func offersManualMoveForBigItemsWithoutTheirOwnMoveOption() {

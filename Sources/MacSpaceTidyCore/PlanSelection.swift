@@ -27,13 +27,12 @@ public struct PlanSelection: Sendable, Equatable {
         return now.timeIntervalSince(changed) < RECENT_SECONDS
     }
 
-    /// Safe items are checked, except app caches used in the last days. With a disk, moving is preferred over deleting.
-    public static func defaults(for items: [ScanItem], hasDisk: Bool, now: Date = Date()) -> PlanSelection {
+    /// Safe items are checked, except app caches used in the last days. Moving is preferred over deleting.
+    /// Without a disk the move is skipped when the plan runs; nothing is deleted instead.
+    public static func defaults(for items: [ScanItem], now: Date = Date()) -> PlanSelection {
         var plan = PlanSelection()
         plan.selected = Set(items.filter { $0.checkedByDefault && isSelectable($0) && !isRecentlyUsed($0, now: now) }.map(\.id))
-        if hasDisk {
-            plan.preferMoves(in: items)
-        }
+        plan.preferMoves(in: items)
         return plan
     }
 
@@ -41,14 +40,14 @@ public struct PlanSelection: Sendable, Equatable {
         return selected.contains(item.id)
     }
 
-    public func effectiveAction(_ item: ScanItem, hasDisk: Bool) -> ItemAction {
-        return item.canMove && hasDisk && chosenMoves.contains(item.id) ? .move : item.action
+    public func effectiveAction(_ item: ScanItem) -> ItemAction {
+        return item.canMove && chosenMoves.contains(item.id) ? .move : item.action
     }
 
     /// Checked items, each with the action the user chose.
-    public func chosenItems(from items: [ScanItem], hasDisk: Bool) -> [ScanItem] {
+    public func chosenItems(from items: [ScanItem]) -> [ScanItem] {
         return items.filter(isSelected).map { item in
-            effectiveAction(item, hasDisk: hasDisk) == item.action ? item : item.with(action: .move)
+            effectiveAction(item) == item.action ? item : item.with(action: .move)
         }
     }
 

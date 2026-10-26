@@ -60,7 +60,7 @@ struct OptimizerTests {
         #expect(statuses[0] == .done)
         #expect(statuses[1] == .skipped("Protected path."))
         #expect(statuses[2] == .skipped("It is a link now. Scan again."))
-        #expect(statuses[3] == .skipped("Choose an external disk first."))
+        #expect(statuses[3] == .skipped(Optimizer.NO_DISK_REASON))
         #expect(statuses[4] == .skipped("Protected path."))
         #expect(FolderCleaner.isClean(temp.sub("home/Library/Caches/AppA")))
         #expect(PathTools.isDirectory(temp.sub("home/Library/Caches/AppA")))

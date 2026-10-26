@@ -33,9 +33,6 @@ final class AppModel {
             if !isDemo {
                 SharedSettings.moveDiskRoot = moveDiskRoot
             }
-            if oldValue == nil && moveDiskRoot != nil {
-                plan.preferMoves(in: report?.items ?? [])
-            }
         }
     }
 
@@ -57,11 +54,11 @@ final class AppModel {
 
     /// Selected items with the action the user chose (move or delete).
     var selectedItems: [ScanItem] {
-        return plan.chosenItems(from: report?.items ?? [], hasDisk: usableDiskRoot != nil)
+        return plan.chosenItems(from: report?.items ?? [])
     }
 
     func effectiveAction(_ item: ScanItem) -> ItemAction {
-        return plan.effectiveAction(item, hasDisk: usableDiskRoot != nil)
+        return plan.effectiveAction(item)
     }
 
     var selectedBytes: Int64 {
@@ -194,7 +191,7 @@ final class AppModel {
     private func finishScan(_ report: ScanReport) {
         self.report = report
         refreshDiskChoices()
-        plan = PlanSelection.defaults(for: report.items, hasDisk: usableDiskRoot != nil)
+        plan = PlanSelection.defaults(for: report.items)
         scanExternal(report)
         isScanning = false
     }

@@ -95,7 +95,7 @@ Terminal keys: arrows move, space toggles, Enter expands, `s` scans, `o` optimiz
 - Any other big item (1 GB or more, delete action, no admin) and every big unknown folder can be moved by hand:
   right-click → "Move to External Disk…" in the app, key `m` in the terminal. A warning explains the risk
   (the app may recreate the folder and remove the link).
-- Moving is preferred: when an external disk is chosen, these items default to Move. Without a disk they are deleted.
+- Moving is preferred: when an external disk is chosen, these items default to Move. Without a disk the move is skipped and shown as a notice (confirm window, row, result). Nothing is deleted instead; the user can switch an item to Delete.
 - Small app caches in `~/Library/Caches/*` are delete only: many apps delete and recreate their cache folder,
   which silently replaces the link with a normal folder.
 

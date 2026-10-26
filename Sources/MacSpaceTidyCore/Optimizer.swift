@@ -9,6 +9,9 @@ public struct Optimizer: Sendable {
     /// Item index, item, and the current stage text ("Deleting", "Copying", …).
     public typealias Progress = @Sendable (Int, ScanItem, String) -> Void
 
+    /// Why a move was skipped when no disk is chosen. The interfaces look for it to show a notice.
+    public static let NO_DISK_REASON = "No external disk is chosen."
+
     private static let XCRUN = "/usr/bin/xcrun"
     private static let SIMULATOR_DELETE_TIMEOUT_SECONDS = 600.0
 
@@ -169,7 +172,7 @@ public struct Optimizer: Sendable {
         switch item.action {
         case .move:
             guard let diskRoot else {
-                return .skipped("Choose an external disk first.")
+                return .skipped(Optimizer.NO_DISK_REASON)
             }
             return mover.move(item, diskRoot: diskRoot, stage: stage)
         case .moveBack:

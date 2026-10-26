@@ -44,6 +44,15 @@ struct OptimizeProgressView: View {
             Label("Empty the Trash to free the space of trashed items.", systemImage: "trash")
                 .foregroundStyle(.secondary)
         }
+        let noDisk = result.outcomes.filter { $0.status == .skipped(Optimizer.NO_DISK_REASON) }
+        if !noDisk.isEmpty {
+            Label(
+                "\(noDisk.count) moves skipped (\(ByteText.format(noDisk.reduce(0) { $0 + $1.item.size.bytes }))): no external disk. "
+                    + "Choose one in Settings (Cmd-,), then optimize again.",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(.orange)
+        }
         let keptCopies = result.outcomes.filter { $0.status == .done && $0.item.action == .moveBack }.compactMap(\.item.linkTarget)
         ForEach(keptCopies, id: \.self) { target in
             Label("The copy on the external disk stays at \(target). Delete it when you are sure.", systemImage: "externaldrive")

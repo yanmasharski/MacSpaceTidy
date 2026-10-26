@@ -69,12 +69,17 @@ struct ConfirmView: View {
     }
 
     private func moveSection(_ items: [ScanItem]) -> some View {
-        section(
-            systemImage: "externaldrive.fill",
-            tint: .blue,
-            title: "Move to external disk — \(count(items, "folder")), \(ByteText.format(total(items)))",
-            subtitle: "Nothing is lost. Each folder is copied to the disk, checked, and replaced with a link. "
-                + "Apps keep working while the disk is connected."
+        let hasDisk = model.usableDiskRoot != nil
+        return section(
+            systemImage: hasDisk ? "externaldrive.fill" : "exclamationmark.triangle.fill",
+            tint: hasDisk ? .blue : .orange,
+            title: hasDisk
+                ? "Move to external disk — \(count(items, "folder")), \(ByteText.format(total(items)))"
+                : "Skipped, no external disk — \(count(items, "folder")), \(ByteText.format(total(items)))",
+            subtitle: hasDisk
+                ? "Nothing is lost. Each folder is copied to the disk, checked, and replaced with a link. "
+                    + "Apps keep working while the disk is connected."
+                : "These folders stay on this Mac. Nothing is deleted instead. Choose a disk below, or switch a folder to Delete in the list."
         ) {
             DiskPickerView(model: model)
             ForEach(items) { item in

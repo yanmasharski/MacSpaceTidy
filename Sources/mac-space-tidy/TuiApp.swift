@@ -56,7 +56,7 @@ final class TuiApp {
     }
 
     var chosenItems: [ScanItem] {
-        return plan.chosenItems(from: snapshot.report?.items ?? [], hasDisk: usableDiskRoot != nil)
+        return plan.chosenItems(from: snapshot.report?.items ?? [])
     }
 
     func run() {
@@ -212,13 +212,13 @@ final class TuiApp {
             message = "Select an item first."
             return
         }
-        guard usableDiskRoot != nil else {
-            message = "Choose an external disk first: press d."
-            return
-        }
         if item.canMove {
-            plan.setMove(item, plan.effectiveAction(item, hasDisk: true) != .move)
+            plan.setMove(item, plan.effectiveAction(item) != .move)
         } else if item.offersManualMove {
+            guard usableDiskRoot != nil else {
+                message = "Choose an external disk first: press d."
+                return
+            }
             askManualMove(item)
         } else {
             message = "This item cannot be moved."
@@ -300,13 +300,9 @@ final class TuiApp {
             message = diskChoices.first?.problem.map { "No usable disk: \($0)" } ?? "No external disk is connected."
             return
         }
-        let hadDisk = usableDiskRoot != nil
         let next = usable.firstIndex(of: diskRoot ?? "").map { (usable.index(after: $0)) % usable.count } ?? 0
         diskRoot = usable[next]
         SharedSettings.moveDiskRoot = diskRoot
-        if !hadDisk {
-            plan.preferMoves(in: snapshot.report?.items ?? [])
-        }
         message = "Moves go to \(diskRoot ?? "")."
     }
 
@@ -330,7 +326,7 @@ final class TuiApp {
         snapshot = background.read()
         if snapshot.scanVersion != seenScanVersion, let report = snapshot.report {
             seenScanVersion = snapshot.scanVersion
-            plan = PlanSelection.defaults(for: report.items, hasDisk: usableDiskRoot != nil)
+            plan = PlanSelection.defaults(for: report.items)
         }
         if let error = snapshot.errorText {
             message = error

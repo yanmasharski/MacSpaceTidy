@@ -111,15 +111,10 @@ struct ItemRowView: View {
         .frame(width: ItemRowView.SIZE_BAR_WIDTH, height: 6)
     }
 
-    /// "Move | Delete" for caches that may be moved instead. Needs a chosen disk.
+    /// "Move | Delete" for caches that may be moved instead. Without a chosen disk a Move is skipped.
     @ViewBuilder
     private var movePicker: some View {
-        if model.usableDiskRoot == nil {
-            Text("Can be moved")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .help("Choose an external disk in Settings (Cmd-,) to move this cache instead of deleting it.")
-        } else {
+        VStack(alignment: .trailing, spacing: 2) {
             Picker("", selection: Binding(
                 get: { model.effectiveAction(item) == .move },
                 set: { model.plan.setMove(item, $0) }
@@ -133,6 +128,12 @@ struct ItemRowView: View {
             .help(item.action == .trashOnly
                 ? "Move keeps the file on the external disk, with a link in its place. Trash puts it in the Trash."
                 : "Move keeps the cache on the external disk. Delete removes it; the tool downloads it again when needed.")
+            if model.usableDiskRoot == nil && model.effectiveAction(item) == .move {
+                Label("No disk: skipped", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .help("No external disk is chosen, so this folder stays on the Mac. Choose a disk in Settings (Cmd-,), or switch to Delete.")
+            }
         }
     }
 
