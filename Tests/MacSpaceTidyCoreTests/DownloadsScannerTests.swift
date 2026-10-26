@@ -91,7 +91,7 @@ struct DownloadsScannerTests {
         // The delete setting is "delete now", and the file still must go to the Trash.
         let result = optimizer.run(items: [item, outsider], mode: .deleteNow, isCancelled: { false })
 
-        #expect(result.outcomes.map(\.status) == [.done, .skipped("Only entries of the Downloads folder, of the leftover folders, and build folders of projects can be trashed.")])
+        #expect(result.outcomes.map(\.status) == [.done, .skipped("Only entries of the Downloads folder, of the leftover folders, large files of yours, and build folders of projects can be trashed.")])
         #expect(!PathTools.exists(item.path))
         #expect(PathTools.exists(trashedCopy))
         #expect(PathTools.exists(fixture.temp.sub("home/Documents/keep.bin")))

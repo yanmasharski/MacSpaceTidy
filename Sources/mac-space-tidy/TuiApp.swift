@@ -23,7 +23,7 @@ final class TuiApp {
     let terminal = Terminal()
     let background = TuiBackground()
     let catalog: Catalog
-    let options = ScanOptions.standard()
+    var options = ScanOptions.standard()
 
     var screen = Screen.main
     var snapshot = TuiBackground.Snapshot()
@@ -41,7 +41,7 @@ final class TuiApp {
     var progressTotal = 0
     /// Lines above the list on the main screen. Set while drawing, used for paging.
     var headerLineCount = 0
-    private var seenScanVersion = 0
+    private var seenItemIds: Set<String> = []
     private var isRunning = true
 
     init(catalog: Catalog) {
@@ -84,11 +84,17 @@ final class TuiApp {
         for category in ItemCategory.allCases where category != .system {
             let items = report.items(in: category)
             if items.isEmpty {
+                if snapshot.pendingCategories.contains(category) {
+                    rows.append(.pending(category))
+                }
                 continue
             }
             rows.append(.category(category, items))
             if expanded.contains(category) {
-                rows += items.map(TuiRow.item)
+                for item in items {
+                    rows.append(.item(item))
+                    rows += item.duplicateCopies.indices.map { TuiRow.copy(item, $0) }
+                }
             }
         }
         return rows
@@ -127,12 +133,18 @@ final class TuiApp {
         case .pageUp: cursor = max(cursor - listHeight(), 0)
         case .pageDown: cursor = min(cursor + listHeight(), max(rows.count - 1, 0))
         case .space: toggle(current)
-        case .enter, .right, .left: expandOrCollapse(current, key: key, rows: rows)
+        case .enter, .right, .left:
+            if case .copy = current, key == .enter {
+                toggle(current)
+            } else {
+                expandOrCollapse(current, key: key, rows: rows)
+            }
         case .character("m"): switchMoveOrDelete(current)
         case .character("b"): askMoveBack(current)
         case .character("i"): askIgnore(current)
         case .character("x"): askFix(current)
         case .character("d"): nextDisk()
+        case .character("e"): toggleExtraScanDisk()
         case .character("s"): startScan()
         case .character("o"): openConfirm()
         case .character("q"), .escape: isRunning = false
@@ -179,7 +191,9 @@ final class TuiApp {
                 message = item.action == .moveBack ? "Press b to move it back." : "This item has no action. Info only."
             }
             plan.toggle(item)
-        case .problem, nil:
+        case .copy(let group, let index):
+            plan.setKeeper(of: group, to: index)
+        case .problem, .pending, nil:
             break
         }
     }
@@ -205,6 +219,24 @@ final class TuiApp {
         default:
             break
         }
+    }
+
+    /// Each press turns on the next disk, then all off. Chosen disks are searched for large files and duplicates.
+    private func toggleExtraScanDisk() {
+        refreshDiskChoices()
+        let usable = diskChoices.filter { $0.problem == nil }.map(\.path)
+        guard !usable.isEmpty else {
+            message = "No other disk is connected."
+            return
+        }
+        let chosen = Set(SharedSettings.extraScanDisks).intersection(usable)
+        let next = usable.first { !chosen.contains($0) }
+        SharedSettings.extraScanDisks = next.map { usable.filter { path in chosen.contains(path) } + [$0] } ?? []
+        options = ScanOptions.standard()
+        let names = SharedSettings.extraScanDisks.map { ($0 as NSString).lastPathComponent }
+        message = names.isEmpty
+            ? "Large files and duplicates are searched on this Mac only."
+            : "Also searching: \(names.joined(separator: ", ")). Press s to scan again; it takes longer."
     }
 
     private func switchMoveOrDelete(_ row: TuiRow?) {
@@ -324,9 +356,8 @@ final class TuiApp {
 
     private func syncFromBackground() {
         snapshot = background.read()
-        if snapshot.scanVersion != seenScanVersion, let report = snapshot.report {
-            seenScanVersion = snapshot.scanVersion
-            plan = PlanSelection.defaults(for: report.items)
+        if let report = snapshot.report {
+            plan.addDefaults(for: report.items.filter { seenItemIds.insert($0.id).inserted })
         }
         if let error = snapshot.errorText {
             message = error
@@ -343,14 +374,20 @@ final class TuiApp {
         let catalog = catalog
         let options = options
         let background = background
+        plan = PlanSelection()
+        seenItemIds = []
         background.modify { $0.isScanning = true; $0.scanStep = "" }
         DispatchQueue.global().async {
             do {
-                let report = try Scanner.scan(catalog: catalog, options: options) { step in
+                let report = try Scanner.scan(catalog: catalog, options: options, progress: { step in
                     background.modify { $0.scanStep = step }
-                }
+                }, onPartial: { partial, pending in
+                    // Each finished block shows its numbers at once.
+                    background.modify { $0.report = partial; $0.pendingCategories = pending }
+                })
                 var version = 0
                 background.modify {
+                    $0.pendingCategories = []
                     $0.report = report
                     $0.scanVersion += 1
                     version = $0.scanVersion
@@ -373,7 +410,7 @@ final class TuiApp {
                     $0.isScanningExternal = false
                 }
             } catch {
-                background.modify { $0.isScanning = false; $0.errorText = "Scan failed: \(error.localizedDescription)" }
+                background.modify { $0.isScanning = false; $0.pendingCategories = []; $0.errorText = "Scan failed: \(error.localizedDescription)" }
             }
         }
     }

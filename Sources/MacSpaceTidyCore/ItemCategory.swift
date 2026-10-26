@@ -8,6 +8,7 @@ public enum ItemCategory: String, Codable, Sendable, CaseIterable {
     case simulators
     case cleanInApp
     case largeUnknown
+    case duplicates
     case alreadyMoved
     case external
     case system
@@ -22,7 +23,8 @@ public enum ItemCategory: String, Codable, Sendable, CaseIterable {
         case .projects: return "Project build folders"
         case .simulators: return "Simulator runtimes"
         case .cleanInApp: return "Clean inside the app"
-        case .largeUnknown: return "Large, unknown"
+        case .largeUnknown: return "Large files and folders"
+        case .duplicates: return "Duplicate files"
         case .alreadyMoved: return "Already moved"
         case .external: return "Clean on external disk"
         case .system: return "System"
@@ -31,6 +33,7 @@ public enum ItemCategory: String, Codable, Sendable, CaseIterable {
 
     /// Takes space on the internal disk, so it is a segment of the disk bar.
     public var isOnInternalDisk: Bool {
-        return self != .alreadyMoved && self != .external && self != .system
+        // Duplicates are counted already in the categories and folders they sit in.
+        return self != .alreadyMoved && self != .external && self != .system && self != .duplicates
     }
 }

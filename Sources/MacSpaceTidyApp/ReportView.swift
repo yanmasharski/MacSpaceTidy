@@ -30,6 +30,7 @@ struct ReportView: View {
                 ProblemsView(model: model, problems: report.problems)
             }
             CategoryListView(model: model, report: report)
+            ScanDisksView(model: model)
         }
         .padding(20)
     }

@@ -165,8 +165,18 @@ Safety rules:
 ### What gets actions
 
 - Delete or move actions exist **only** for paths in the catalog (known paths with known risk).
-- Big unknown folders go to the category "Large, unknown". Info only, no checkbox.
+- Big unknown folders go to the category "Large files and folders". Info only, no checkbox.
   A manual "Move…" exists for them, with a clear warning.
+- Single files of 500 MB or more in Desktop, Documents, Movies, Music, Pictures, and Downloads go to the same category.
+  They are your own data: never checked by default, always to the Trash, or moved to an external disk.
+  Files inside a git repository, inside an app or library package, hidden files, and links are skipped.
+- Duplicate files: files of 50 MB or more with the same content (size, then start and end, then SHA-256 of everything)
+  in the same folders. One group is one row. The user picks the copy that stays (the oldest is suggested); ticking the box
+  sends the other copies to the Trash. An unticked group keeps all copies. Hard links and links are not duplicates.
+  Right before the Trash the kept copy is hashed again and must still be identical. Duplicates are not a disk bar segment.
+  The user may choose external disks to search too (Settings, or `e` in the terminal). None is chosen by default, so
+  large files and duplicates are searched on this Mac only. Only writable disks count. Time Machine backups, `.Trashes`,
+  and the tool's own folder are skipped.
 
 ### How things are deleted
 

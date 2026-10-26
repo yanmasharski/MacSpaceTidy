@@ -44,4 +44,44 @@ struct ScannerTests {
             "~/Movies": .largeUnknown,
         ])
     }
+
+    @Test func reportsEachBlockWhenItIsReady() throws {
+        let temp = try TempFolder()
+        defer { temp.remove() }
+        let home = try temp.makeFolder("home")
+        try temp.makeFile("home/Library/Caches/AppA/blob", bytes: ScannerTests.BIG_BYTES)
+        let catalog = Catalog(entries: [entry(id: "caches", path: "~/Library/Caches/*")])
+        let options = ScanOptions(
+            home: home, disks: ExternalDisks(volumesRoot: temp.sub("Volumes")), unknownParents: [], linkRoots: [home], usesSystemTools: false
+        )
+        let blocks = Blocks()
+
+        let final = try Scanner.scan(catalog: catalog, options: options, onPartial: { report, pending in
+            blocks.add(itemCount: report.items.count, pending: pending)
+        })
+
+        let seen = blocks.all
+        #expect(seen.first?.itemCount == 0)
+        #expect(seen.first?.pending.contains(.caches) == true)
+        #expect(seen.first(where: { !$0.pending.contains(.caches) })?.itemCount == 1)
+        #expect(seen.last?.pending.isEmpty == true)
+        #expect(final.items.count == 1)
+    }
+
+    private final class Blocks: @unchecked Sendable {
+        private let lock = NSLock()
+        private var blocks: [(itemCount: Int, pending: Set<ItemCategory>)] = []
+
+        func add(itemCount: Int, pending: Set<ItemCategory>) {
+            lock.lock()
+            blocks.append((itemCount, pending))
+            lock.unlock()
+        }
+
+        var all: [(itemCount: Int, pending: Set<ItemCategory>)] {
+            lock.lock()
+            defer { lock.unlock() }
+            return blocks
+        }
+    }
 }

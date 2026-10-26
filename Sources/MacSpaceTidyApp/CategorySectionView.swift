@@ -39,13 +39,14 @@ struct CategorySectionView: View {
                 Text(category.title).font(.headline)
                 Text("\(items.count)").foregroundStyle(.secondary)
                 Spacer()
-                let isCounting = model.isScanningExternal && (category == .alreadyMoved || category == .external)
+                let isPending = model.pendingCategories.contains(category)
+                let isCounting = isPending || (model.isScanningExternal && (category == .alreadyMoved || category == .external))
                 if isCounting {
                     ProgressView().controlSize(.small)
-                    Text(totalBytes > 0 ? "last scan, counting again…" : "measuring…").foregroundStyle(.orange)
+                    Text(isPending ? "counting…" : (totalBytes > 0 ? "last scan, counting again…" : "measuring…")).foregroundStyle(.orange)
                 }
                 if !isCounting || totalBytes > 0 {
-                    Text((isCounting ? "~ " : "") + ByteText.format(totalBytes)).monospacedDigit()
+                    Text((isCounting && !isPending ? "~ " : "") + ByteText.format(totalBytes)).monospacedDigit()
                 }
             }
             .padding(.vertical, 8)
@@ -57,7 +58,11 @@ struct CategorySectionView: View {
                 Divider()
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(items) { item in
-                        ItemRowView(model: model, item: item, largestBytes: largestBytes)
+                        if item.category == .duplicates {
+                            DuplicateGroupView(model: model, item: item)
+                        } else {
+                            ItemRowView(model: model, item: item, largestBytes: largestBytes)
+                        }
                         Divider().padding(.leading, 58)
                     }
                 }

@@ -8,6 +8,8 @@ final class AppModel {
     var report: ScanReport?
     var isScanning = false
     var isScanningExternal = false
+    /// Categories of the running scan that are still being counted. Shown as dimmed rows.
+    var pendingCategories: Set<ItemCategory> = []
     var scanStep = ""
     var errorText: String?
     var plan = PlanSelection()
@@ -27,6 +29,14 @@ final class AppModel {
             }
         }
     }
+    /// External disks searched for large files and duplicates too. Takes effect on the next scan.
+    var extraScanDisks: Set<String> {
+        didSet {
+            if !isDemo {
+                SharedSettings.extraScanDisks = extraScanDisks.sorted()
+            }
+        }
+    }
     /// External disk for moves. Chosen once, remembered.
     var moveDiskRoot: String? {
         didSet {
@@ -37,6 +47,7 @@ final class AppModel {
     }
 
     private let catalog: Catalog?
+    private var seenItemIds: Set<String> = []
     private var cancelFlag = CancelFlag()
     /// A newer scan makes the result of an older external scan stale.
     private var scanGeneration = 0
@@ -44,6 +55,7 @@ final class AppModel {
     init() {
         deleteMode = SharedSettings.deleteMode
         moveDiskRoot = SharedSettings.moveDiskRoot
+        extraScanDisks = Set(SharedSettings.extraScanDisks)
         do {
             catalog = try Catalog.loadBundled()
         } catch {
@@ -105,11 +117,15 @@ final class AppModel {
         scanGeneration += 1
         scanStep = ""
         errorText = nil
+        plan = PlanSelection()
+        seenItemIds = []
         Task.detached {
             do {
-                let report = try Scanner.scan(catalog: catalog, options: .standard()) { step in
+                let report = try Scanner.scan(catalog: catalog, options: .standard(), progress: { step in
                     Task { @MainActor in self.scanStep = step }
-                }
+                }, onPartial: { partial, pending in
+                    Task { @MainActor in self.showPartial(partial, pending: pending) }
+                })
                 await self.finishScan(report)
             } catch {
                 await self.failScan(error)
@@ -188,10 +204,21 @@ final class AppModel {
         }
     }
 
+    /// A finished block of the scan: its numbers appear at once, with the default checks for its new items.
+    private func showPartial(_ partial: ScanReport, pending: Set<ItemCategory>) {
+        guard isScanning else {
+            return
+        }
+        report = partial
+        pendingCategories = pending
+        plan.addDefaults(for: partial.items.filter { seenItemIds.insert($0.id).inserted })
+    }
+
     private func finishScan(_ report: ScanReport) {
         self.report = report
+        pendingCategories = []
+        plan.addDefaults(for: report.items.filter { seenItemIds.insert($0.id).inserted })
         refreshDiskChoices()
-        plan = PlanSelection.defaults(for: report.items)
         scanExternal(report)
         isScanning = false
     }
@@ -221,6 +248,7 @@ final class AppModel {
     }
 
     private func failScan(_ error: Error) {
+        pendingCategories = []
         errorText = "Scan failed: \(error.localizedDescription)"
         isScanning = false
     }

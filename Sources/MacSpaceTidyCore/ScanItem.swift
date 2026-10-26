@@ -18,11 +18,16 @@ public struct ScanItem: Sendable, Identifiable {
     public let canMove: Bool
     /// App cache that may be in use: not checked by default when it changed recently.
     public let ageMatters: Bool
+    /// Set for a group of identical files: every copy, the suggested original first. The item stands for the whole group.
+    public let duplicateCopies: [DuplicateCopy]
+    /// Set for one copy that goes to the Trash: the identical copy that stays. Checked again right before the Trash.
+    public let keeperPath: String?
 
     public init(
         path: String, title: String, catalogId: String?, category: ItemCategory, action: ItemAction, risk: Risk,
         checkedByDefault: Bool, needsAdmin: Bool, ownerApps: [String], reason: String, size: FolderSize,
-        linkTarget: String?, canMove: Bool = false, ageMatters: Bool = false
+        linkTarget: String?, canMove: Bool = false, ageMatters: Bool = false,
+        duplicateCopies: [DuplicateCopy] = [], keeperPath: String? = nil
     ) {
         self.path = path
         self.title = title
@@ -38,6 +43,8 @@ public struct ScanItem: Sendable, Identifiable {
         self.linkTarget = linkTarget
         self.canMove = canMove
         self.ageMatters = ageMatters
+        self.duplicateCopies = duplicateCopies
+        self.keeperPath = keeperPath
     }
 
     public var id: String {
@@ -61,7 +68,8 @@ public struct ScanItem: Sendable, Identifiable {
         return ScanItem(
             path: path, title: title, catalogId: catalogId, category: category, action: action, risk: risk,
             checkedByDefault: false, needsAdmin: needsAdmin, ownerApps: ownerApps, reason: reason, size: size,
-            linkTarget: linkTarget, canMove: canMove, ageMatters: ageMatters
+            linkTarget: linkTarget, canMove: canMove, ageMatters: ageMatters,
+            duplicateCopies: duplicateCopies, keeperPath: keeperPath
         )
     }
 
@@ -70,7 +78,8 @@ public struct ScanItem: Sendable, Identifiable {
         return ScanItem(
             path: path, title: title, catalogId: catalogId, category: category, action: action, risk: risk,
             checkedByDefault: checkedByDefault, needsAdmin: needsAdmin, ownerApps: ownerApps, reason: reason, size: size,
-            linkTarget: linkTarget, canMove: canMove, ageMatters: ageMatters
+            linkTarget: linkTarget, canMove: canMove, ageMatters: ageMatters,
+            duplicateCopies: duplicateCopies, keeperPath: keeperPath
         )
     }
 }

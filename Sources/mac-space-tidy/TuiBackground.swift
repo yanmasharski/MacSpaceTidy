@@ -9,6 +9,7 @@ final class TuiBackground: @unchecked Sendable {
         var scanVersion = 0
         var isScanning = false
         var isScanningExternal = false
+        var pendingCategories: Set<ItemCategory> = []
         var scanStep = ""
         var isOptimizing = false
         var optimizeIndex = 0

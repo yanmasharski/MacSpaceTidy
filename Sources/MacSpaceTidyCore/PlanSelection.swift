@@ -5,6 +5,8 @@ import Foundation
 public struct PlanSelection: Sendable, Equatable {
     public var selected: Set<String> = []
     public var chosenMoves: Set<String> = []
+    /// For a group of duplicates: the index of the copy that stays. The first (suggested) copy when missing.
+    public var keepers: [String: Int] = [:]
 
     public init() {}
 
@@ -36,6 +38,13 @@ public struct PlanSelection: Sendable, Equatable {
         return plan
     }
 
+    /// Adds the defaults for items that arrived later (a scan block). Earlier choices of the user stay.
+    public mutating func addDefaults(for newItems: [ScanItem], now: Date = Date()) {
+        let fresh = PlanSelection.defaults(for: newItems, now: now)
+        selected.formUnion(fresh.selected)
+        chosenMoves.formUnion(fresh.chosenMoves)
+    }
+
     public func isSelected(_ item: ScanItem) -> Bool {
         return selected.contains(item.id)
     }
@@ -46,8 +55,35 @@ public struct PlanSelection: Sendable, Equatable {
 
     /// Checked items, each with the action the user chose.
     public func chosenItems(from items: [ScanItem]) -> [ScanItem] {
-        return items.filter(isSelected).map { item in
-            effectiveAction(item) == item.action ? item : item.with(action: .move)
+        return items.filter(isSelected).flatMap { item -> [ScanItem] in
+            if item.category == .duplicates {
+                return removals(of: item)
+            }
+            return [effectiveAction(item) == item.action ? item : item.with(action: .move)]
+        }
+    }
+
+    public func keeperIndex(of group: ScanItem) -> Int {
+        return min(max(keepers[group.id] ?? 0, 0), max(group.duplicateCopies.count - 1, 0))
+    }
+
+    public mutating func setKeeper(of group: ScanItem, to index: Int) {
+        keepers[group.id] = index
+    }
+
+    /// The copies of a checked group that go to the Trash: all but the one that stays.
+    public func removals(of group: ScanItem) -> [ScanItem] {
+        guard !group.duplicateCopies.isEmpty else {
+            return []
+        }
+        let keeperIndex = keeperIndex(of: group)
+        let keeper = group.duplicateCopies[keeperIndex].path
+        return group.duplicateCopies.enumerated().filter { $0.offset != keeperIndex }.map { _, copy in
+            ScanItem(
+                path: copy.path, title: PathTools.abbreviate(copy.path, home: NSHomeDirectory()), catalogId: nil, category: .duplicates,
+                action: .trashOnly, risk: .medium, checkedByDefault: false, needsAdmin: false, ownerApps: [], reason: group.reason,
+                size: FolderSize(bytes: copy.bytes, isIncomplete: false, newestChange: copy.modified), linkTarget: nil, keeperPath: keeper
+            )
         }
     }
 

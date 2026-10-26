@@ -8,7 +8,7 @@ extension TuiApp {
     private static let ITEM_PREFIX_WIDTH = 21
     private static let SIZE_WIDTH = 10
     private static let CATEGORY_PREFIX_WIDTH = 9
-    private static let MAIN_KEYS = "↑↓ move  space check  enter open  m move/delete  b back  i ignore  x fix  d disk  s scan  o optimize  q quit"
+    private static let MAIN_KEYS = "↑↓ move  space check  enter open  m move/delete  b back  i ignore  x fix  d disk  e other disks  s scan  o optimize  q quit"
     private static let CONFIRM_KEYS = "enter run  t Trash/Delete now  d disk  ↑↓ scroll  esc back"
 
     func render(width: Int, height: Int) -> [String] {
@@ -27,7 +27,7 @@ extension TuiApp {
             lines += diskLines(report, width: width)
         }
         if snapshot.isScanning {
-            lines.append(T.fit("  Scanning \(snapshot.scanStep)", width))
+            lines.append(T.DIM + T.fit("  Scanning \(snapshot.scanStep)", width) + T.RESET)
         } else if snapshot.isScanningExternal {
             lines.append(T.YELLOW + T.fit("  Counting folders on external disks again. Sizes marked ~ are from the last scan.", width) + T.RESET)
         }
@@ -131,13 +131,35 @@ extension TuiApp {
             let isOldNumber = snapshot.isScanningExternal && items.contains { $0.size.cachedAt != nil }
             let isMeasuring = snapshot.isScanningExternal && totalBytes == 0 && (category == .alreadyMoved || category == .external)
             let total = isMeasuring ? "measuring…" : (isOldNumber ? "~ " : "") + ByteText.format(totalBytes)
-            let right = " \(items.count) items  " + T.padLeft(total, TuiApp.SIZE_WIDTH)
+            let right = " \(items.count) \(items.count == 1 ? "item" : "items")  " + T.padLeft(total, TuiApp.SIZE_WIDTH)
             let title = T.fit(category.title, width - TuiApp.CATEGORY_PREFIX_WIDTH - right.count)
             let prefix = " \(arrow) \(checkbox(for: items)) "
             if isCurrent {
                 return T.INVERSE + prefix + "■ " + T.BOLD + title + right + T.RESET
             }
             return prefix + T.foreground(T.colorCode(category)) + "■" + T.RESET + " " + T.BOLD + title + T.RESET + T.DIM + right + T.RESET
+        case .copy(let group, let index):
+            let copy = group.duplicateCopies[index]
+            let isKept = plan.keeperIndex(of: group) == index
+            let goesToTrash = plan.isSelected(group) && !isKept
+            let place = copy.diskName ?? "This Mac"
+            let prefix = "           \(isKept ? "(•)" : "( )") Copy \(index + 1) · \(place)\(index == 0 ? " · suggested" : "")  "
+            let tail = goesToTrash ? "  To the Trash" : "  Stays"
+            let path = T.fitMiddle(PathTools.abbreviate(copy.path, home: options.home), max(width - prefix.count - tail.count, 10))
+            let line = T.fit(prefix + path + tail, width)
+            if isCurrent {
+                return T.INVERSE + line + T.RESET
+            }
+            return (goesToTrash ? T.YELLOW : T.DIM) + line + T.RESET
+        case .pending(let category):
+            // Dim and bright in turns, with a spinner, so it reads as "still counting".
+            let tick = Int(Date().timeIntervalSinceReferenceDate * 5)
+            let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"][tick % 10]
+            let right = "counting…  " + spinner
+            let title = T.fit(category.title, width - TuiApp.CATEGORY_PREFIX_WIDTH - right.count - 2)
+            let style = (tick / 4) % 2 == 0 ? T.DIM : ""
+            let line = T.fit("   " + "    " + "■ " + title + " " + right, width)
+            return style + T.foreground(T.colorCode(category)) + line.prefix(9) + T.RESET + style + line.dropFirst(9) + T.RESET
         case .item(let item):
             let mark: String
             if item.action == .moveBack {
@@ -165,6 +187,9 @@ extension TuiApp {
     }
 
     private func itemSuffix(_ item: ScanItem) -> String {
+        if item.category == .duplicates {
+            return "  keeps copy \(plan.keeperIndex(of: item) + 1) of \(item.duplicateCopies.count)"
+        }
         var suffix = ""
         if item.canMove {
             if plan.effectiveAction(item) != .move {
@@ -201,6 +226,10 @@ extension TuiApp {
         switch row {
         case .problem(let problem):
             return problem.kind == .diskNotMounted ? problem.detail : "\(problem.detail) Press x to fix."
+        case .copy(let group, _):
+            return "Space or Enter: keep this copy. Check the group above to send the other copies to the Trash (\(group.duplicateCopies.count) copies)."
+        case .pending(let category):
+            return "\(category.title) is still being counted."
         case .category(let category, let items):
             return "\(category.title): \(items.count) items. Space checks all, Enter opens."
         case .item(let item):

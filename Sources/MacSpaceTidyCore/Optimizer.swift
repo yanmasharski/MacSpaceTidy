@@ -114,6 +114,12 @@ public struct Optimizer: Sendable {
 
     /// Nil when the item may be deleted now.
     public func refusalReason(_ item: ScanItem) -> String? {
+        if item.category == .duplicates {
+            if catalog.isProtected(item.path, home: options.home) {
+                return "Protected path."
+            }
+            return item.action == .trashOnly ? DuplicateScanner.refusal(item, options: options) : "This item cannot be deleted."
+        }
         if item.action == .deleteSimulatorRuntime {
             return nil
         }
@@ -126,8 +132,9 @@ public struct Optimizer: Sendable {
             return reason
         }
         if item.action == .trashOnly && item.category != .projects
-            && (item.path as NSString).deletingLastPathComponent != options.downloadsPath && !LeftoverScanner.canTrash(item.path, options: options) {
-            return "Only entries of the Downloads folder, of the leftover folders, and build folders of projects can be trashed."
+            && (item.path as NSString).deletingLastPathComponent != options.downloadsPath && !LeftoverScanner.canTrash(item.path, options: options)
+            && !LargeFileScanner.canTrash(item.path, options: options) {
+            return "Only entries of the Downloads folder, of the leftover folders, large files of yours, and build folders of projects can be trashed."
         }
         // The Wine prefix may be a link to an external disk. Then its content is cleaned; the link and the folder stay.
         if item.action == .trashOnly && PathTools.isSymlink(item.path) && item.path == LeftoverScanner.winePrefix(options: options) {

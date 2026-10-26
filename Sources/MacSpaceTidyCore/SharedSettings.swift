@@ -5,6 +5,7 @@ public enum SharedSettings {
     public static let SUITE_NAME = "io.github.yanmasharski.MacSpaceTidy.settings"
     private static let DELETE_MODE_KEY = "deleteMode"
     private static let MOVE_DISK_KEY = "moveDiskRoot"
+    private static let EXTRA_SCAN_DISKS_KEY = "extraScanDisks"
 
     private static var store: UserDefaults {
         return UserDefaults(suiteName: SUITE_NAME) ?? .standard
@@ -13,6 +14,12 @@ public enum SharedSettings {
     public static var deleteMode: DeleteMode {
         get { store.string(forKey: DELETE_MODE_KEY).flatMap(DeleteMode.init(rawValue:)) ?? .trash }
         set { store.set(newValue.rawValue, forKey: DELETE_MODE_KEY) }
+    }
+
+    /// External disks (`/Volumes/<name>`) the user chose to search for large files and duplicates. None until chosen.
+    public static var extraScanDisks: [String] {
+        get { store.stringArray(forKey: EXTRA_SCAN_DISKS_KEY) ?? [] }
+        set { store.set(newValue, forKey: EXTRA_SCAN_DISKS_KEY) }
     }
 
     /// The external disk for moves. Nil until the user picks one.

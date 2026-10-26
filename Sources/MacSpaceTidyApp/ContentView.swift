@@ -69,6 +69,7 @@ struct ContentView: View {
                     .truncationMode(.middle)
                     .frame(maxWidth: 420)
             } else {
+                ScanDisksView(model: model)
                 Button("Scan") { model.scan() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)

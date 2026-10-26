@@ -27,6 +27,7 @@ enum TuiText {
         case .simulators: return 205
         case .cleanInApp: return 37
         case .largeUnknown: return 137
+        case .duplicates: return 79
         case .alreadyMoved: return 71
         case .external: return 62
         case .system: return 245

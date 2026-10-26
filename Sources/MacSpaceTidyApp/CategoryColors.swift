@@ -16,6 +16,7 @@ enum CategoryColors {
         case .simulators: return .pink
         case .cleanInApp: return .teal
         case .largeUnknown: return .brown
+        case .duplicates: return .mint
         case .alreadyMoved: return .green
         case .external: return .indigo
         case .system: return .gray

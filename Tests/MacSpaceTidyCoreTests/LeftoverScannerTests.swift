@@ -218,7 +218,7 @@ struct LeftoverScannerTests {
         // The delete setting is "delete now", and the folder still must go to the Trash. A file inside it is refused.
         let result = optimizer.run(items: [outsider, item], mode: .deleteNow, isCancelled: { false })
 
-        #expect(result.outcomes.map(\.status) == [.skipped("Only entries of the Downloads folder, of the leftover folders, and build folders of projects can be trashed."), .done])
+        #expect(result.outcomes.map(\.status) == [.skipped("Only entries of the Downloads folder, of the leftover folders, large files of yours, and build folders of projects can be trashed."), .done])
         #expect(!PathTools.exists(item.path))
         #expect(PathTools.exists(trashedCopy))
     }

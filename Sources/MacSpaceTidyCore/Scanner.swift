@@ -9,7 +9,10 @@ public enum Scanner {
     private static let UNKNOWN_REASON = "Large folder not in the catalog. Check what it is before you delete or move it."
     private static let SIMULATOR_REASON = "iOS simulator runtime. Keep the versions you test on. Xcode can download it again."
 
-    public static func scan(catalog: Catalog, options: ScanOptions, progress: Progress? = nil) throws -> ScanReport {
+    /// Called after each block of the scan with what is known so far and the categories still being counted.
+    public typealias Partial = @Sendable (ScanReport, Set<ItemCategory>) -> Void
+
+    public static func scan(catalog: Catalog, options: ScanOptions, progress: Progress? = nil, onPartial: Partial? = nil) throws -> ScanReport {
         guard let disk = DiskSpace.read(path: options.home) else {
             throw CocoaError(.fileReadUnknown)
         }
@@ -20,26 +23,60 @@ public enum Scanner {
         // The user's skip list. A folder cannot be hidden by it and counted at the same time.
         let ignored = IgnoreList.read(options: options) ?? []
         var items: [String: ScanItem] = [:]
-        for item in catalogItems(catalog: catalog, options: options, strayLinks: strayLinks, progress: progress) {
-            items[item.path] = item
+        let catalogCategories = ItemCategory.allCases.filter { category in catalog.entries.contains { $0.category == category } }
+        let laterCategories: [ItemCategory] = [.alreadyMoved, .largeUnknown, .downloads, .leftovers, .projects, .duplicates]
+            + (options.usesSystemTools ? [.simulators] : [])
+        var pending = Set(catalogCategories + laterCategories)
+
+        func sortedItems() -> [ScanItem] {
+            return items.values.filter { !IgnoreList.isIgnored($0.path, in: ignored) }.sorted { first, second in
+                if first.size.bytes != second.size.bytes {
+                    return first.size.bytes > second.size.bytes
+                }
+                return first.title < second.title
+            }
+        }
+        func finish(_ categories: [ItemCategory]) {
+            pending.subtract(categories)
+            onPartial?(ScanReport(disk: disk, items: sortedItems(), problems: problems), pending)
+        }
+        finish([])
+
+        for category in catalogCategories {
+            for item in catalogItems(catalog: catalog, options: options, strayLinks: strayLinks, category: category, progress: progress) {
+                items[item.path] = item
+            }
+            finish([category])
         }
         for link in links where items[link.path] == nil && !strayLinks.contains(link.path) {
             if let item = movedItem(path: link.path, target: link.target, options: options, progress: progress) {
                 items[item.path] = item
             }
         }
+        finish([.alreadyMoved])
         for item in largeUnknownItems(catalog: catalog, options: options, progress: progress) {
             items[item.path] = item
         }
         for item in DownloadsScanner.items(options: options, progress: progress) where items[item.path] == nil {
             items[item.path] = item
         }
+        finish([.downloads])
+        // After Downloads, so an old download is not listed twice. A file inside a listed folder is taken out of its size.
+        for item in LargeFileScanner.items(options: options, progress: progress) where items[item.path] == nil && !IgnoreList.isIgnored(item.path, in: ignored) {
+            add(item, into: &items)
+        }
+        finish([.largeUnknown])
         // With a disk missing, its apps cannot be seen, so their data would look like leftovers.
         let leftovers = problems.contains { $0.kind == .diskNotMounted }
             ? [] : LeftoverScanner.items(catalog: catalog, options: options, progress: progress)
-        for item in leftovers + ProjectScanner.items(options: options, progress: progress) where !IgnoreList.isIgnored(item.path, in: ignored) {
+        for item in leftovers where !IgnoreList.isIgnored(item.path, in: ignored) {
             add(item, into: &items)
         }
+        finish([.leftovers])
+        for item in ProjectScanner.items(options: options, progress: progress) where !IgnoreList.isIgnored(item.path, in: ignored) {
+            add(item, into: &items)
+        }
+        finish([.projects])
 
         if let problem = ProblemFinder.freeSpaceProblem(disk: disk) {
             problems.insert(problem, at: 0)
@@ -53,13 +90,13 @@ public enum Scanner {
                 problems.append(problem)
             }
         }
-        let sortedItems = items.values.filter { !IgnoreList.isIgnored($0.path, in: ignored) }.sorted { first, second in
-            if first.size.bytes != second.size.bytes {
-                return first.size.bytes > second.size.bytes
-            }
-            return first.title < second.title
+        finish([.simulators])
+        // The slowest block, so it comes last: it reads whole files.
+        for item in DuplicateScanner.items(options: options, ignored: ignored, progress: progress) {
+            items[item.path] = item
         }
-        return ScanReport(disk: disk, items: sortedItems, problems: problems)
+        finish([.duplicates])
+        return ScanReport(disk: disk, items: sortedItems(), problems: problems)
     }
 
     /// Adds an item. One inside a listed folder (Containers, a whole project folder) is taken out of that folder's size,
@@ -91,9 +128,9 @@ public enum Scanner {
         return PathTools.children(of: folder).filter { !ownEntries.contains($0) }
     }
 
-    private static func catalogItems(catalog: Catalog, options: ScanOptions, strayLinks: Set<String>, progress: Progress?) -> [ScanItem] {
+    private static func catalogItems(catalog: Catalog, options: ScanOptions, strayLinks: Set<String>, category: ItemCategory, progress: Progress?) -> [ScanItem] {
         var items: [ScanItem] = []
-        for entry in catalog.entries where entry.action != .never {
+        for entry in catalog.entries where entry.action != .never && entry.category == category {
             for path in expandedPaths(of: entry, catalog: catalog, home: options.home) where PathTools.exists(path) {
                 if let target = PathTools.linkTarget(path) {
                     if !strayLinks.contains(path), let item = movedItem(path: path, target: target, options: options, progress: progress) {
