@@ -55,6 +55,7 @@ struct ConfirmView: View {
                 Button("Cancel") { model.activeSheet = nil }
                     .keyboardShortcut(.cancelAction)
                 Button(actionTitle(hasMoves: !moves.isEmpty, hasDeletes: !deletes.isEmpty || !externalCleans.isEmpty, hasTrashed: !trashed.isEmpty)) { model.optimize() }
+                    .disabled(!moves.isEmpty && !fitsOnDisk(total(moves)))
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }
@@ -82,12 +83,42 @@ struct ConfirmView: View {
                 : "These folders stay on this Mac. Nothing is deleted instead. Choose a disk below, or switch a folder to Delete in the list."
         ) {
             DiskPickerView(model: model)
+            spaceLine(needed: total(items))
             ForEach(items) { item in
                 VStack(alignment: .leading, spacing: 1) {
                     row(item)
                     moveLine(item)
                 }
             }
+        }
+    }
+
+    /// True when no disk is chosen (moves are skipped then) or the disk has room for all moves.
+    private func fitsOnDisk(_ needed: Int64) -> Bool {
+        guard let root = model.usableDiskRoot, let free = model.diskChoices.first(where: { $0.path == root })?.freeBytes else {
+            return true
+        }
+        return free >= Int64(Double(needed) * Mover.FREE_SPACE_FACTOR)
+    }
+
+    /// Total space check for all moves together, so the user sees it before pressing the button.
+    @ViewBuilder
+    private func spaceLine(needed: Int64) -> some View {
+        if let root = model.usableDiskRoot, let free = model.diskChoices.first(where: { $0.path == root })?.freeBytes {
+            let required = Int64(Double(needed) * Mover.FREE_SPACE_FACTOR)
+            let fits = free >= required
+            Label(
+                fits
+                    ? "Needs \(ByteText.format(required)) on the disk, \(ByteText.format(free)) free. Enough space."
+                    : "Needs \(ByteText.format(required)) on the disk, only \(ByteText.format(free)) free. Choose another disk or move fewer folders.",
+                systemImage: fits ? "checkmark.circle.fill" : "xmark.octagon.fill"
+            )
+            .font(.callout.bold())
+            .foregroundStyle(fits ? Color.green : Color.red)
+        } else {
+            Label("No disk chosen yet. Pick one above, or these folders stay on this Mac.", systemImage: "exclamationmark.triangle.fill")
+                .font(.callout.bold())
+                .foregroundStyle(.orange)
         }
     }
 
