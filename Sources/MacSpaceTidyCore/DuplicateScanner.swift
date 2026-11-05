@@ -10,12 +10,12 @@ public struct DuplicateCopy: Sendable, Equatable {
     public let diskName: String?
 }
 
-/// Finds identical files by content: the same size, then the same start and end, then the same SHA-256 of everything.
+/// Finds identical files by content: the same size, then the same samples (start, middle, end), then the same SHA-256 of everything.
 /// A group is one item. The user picks the copy that stays; the others go to the Trash.
 /// Safety: a copy is trashed only when the kept copy still exists and its full hash is the same, checked right before.
 /// Links, hard links, hidden files, packages, git repositories, and the tool's own folder on a disk are left out.
 public enum DuplicateScanner {
-    private static let SAMPLE_BYTES = 1 << 20
+    private static let SAMPLE_BYTES: Int64 = 256 << 10
     private static let CHUNK_BYTES = 1 << 20
     private static let MAX_DEPTH = 12
     private static let PROGRESS_DEPTH = 2
@@ -28,19 +28,25 @@ public enum DuplicateScanner {
         let modified: Date?
     }
 
-    /// Folders searched: the personal folders on this Mac, plus the external disks the user allowed.
+    /// Folders searched: the personal folders on this Mac, plus the external disks chosen for the duplicate search.
     public static func roots(options: ScanOptions) -> [String] {
-        return LargeFileScanner.searchedRoots(options: options)
+        return LargeFileScanner.roots(options: options) + options.duplicateVolumes.filter { PathTools.isDirectory($0) }
     }
 
-    public static func items(options: ScanOptions, ignored: [String] = [], progress: Scanner.Progress? = nil) -> [ScanItem] {
+    /// `isCancelled` is polled between files. A cancelled search returns what it found so far, which may be nothing.
+    public static func items(
+        options: ScanOptions, ignored: [String] = [], progress: Scanner.Progress? = nil, isCancelled: @Sendable () -> Bool = { false }
+    ) -> [ScanItem] {
         var bySize: [Int64: [Candidate]] = [:]
         for root in roots(options: options) {
-            collect(root: root, options: options, progress: progress, into: &bySize)
+            collect(root: root, options: options, progress: progress, isCancelled: isCancelled, into: &bySize)
         }
         var result: [ScanItem] = []
         for (size, candidates) in bySize where candidates.count > 1 {
-            for group in identicalGroups(candidates, size: size, progress: progress, options: options) {
+            if isCancelled() {
+                break
+            }
+            for group in identicalGroups(candidates, size: size, progress: progress, options: options, isCancelled: isCancelled) {
                 let copies = group.0.filter { !IgnoreList.isIgnored($0.path, in: ignored) }
                 if copies.count > 1 {
                     result.append(item(copies: copies, hash: group.1))
@@ -72,39 +78,56 @@ public enum DuplicateScanner {
     }
 
     private static func isSearchedLocation(_ path: String, options: ScanOptions) -> Bool {
-        return LargeFileScanner.isSearched(path, options: options)
+        return LargeFileScanner.isSearched(path, roots: roots(options: options))
     }
 
     // MARK: Search
 
-    private static func collect(root: String, options: ScanOptions, progress: Scanner.Progress?, into bySize: inout [Int64: [Candidate]]) {
+    /// One autorelease pool per entry: a walk over millions of files would otherwise keep every URL and value alive until it ends.
+    private static func collect(
+        root: String, options: ScanOptions, progress: Scanner.Progress?, isCancelled: () -> Bool, into bySize: inout [Int64: [Candidate]]
+    ) {
         guard let enumerator = FileManager.default.enumerator(
             at: URL(fileURLWithPath: root), includingPropertiesForKeys: KEYS, options: [.skipsHiddenFiles, .skipsPackageDescendants]
         ) else {
             return
         }
-        for case let url as URL in enumerator {
-            guard let values = try? url.resourceValues(forKeys: Set(KEYS)) else {
-                continue
-            }
-            if values.isSymbolicLink == true {
-                enumerator.skipDescendants()
-            } else if values.isDirectory == true {
-                if values.isPackage == true || enumerator.level > MAX_DEPTH || LargeFileScanner.SKIPPED_FOLDERS.contains(url.lastPathComponent)
-                    || PathTools.isDirectory(url.path + "/.git") {
-                    enumerator.skipDescendants()
-                } else if enumerator.level <= PROGRESS_DEPTH {
-                    progress?("Duplicates: " + PathTools.abbreviate(url.path, home: options.home))
+        var hasMore = true
+        while hasMore && !isCancelled() {
+            hasMore = autoreleasepool { () -> Bool in
+                guard let url = enumerator.nextObject() as? URL else {
+                    return false
                 }
-            } else if values.isRegularFile == true, let size = values.fileSize, Int64(size) >= options.duplicateMinBytes {
-                bySize[Int64(size), default: []].append(Candidate(path: url.path, modified: values.contentModificationDate))
+                visit(url, enumerator: enumerator, options: options, progress: progress, into: &bySize)
+                return true
             }
+        }
+    }
+
+    private static func visit(
+        _ url: URL, enumerator: FileManager.DirectoryEnumerator, options: ScanOptions, progress: Scanner.Progress?,
+        into bySize: inout [Int64: [Candidate]]
+    ) {
+        guard let values = try? url.resourceValues(forKeys: Set(KEYS)) else {
+            return
+        }
+        if values.isSymbolicLink == true {
+            enumerator.skipDescendants()
+        } else if values.isDirectory == true {
+            if values.isPackage == true || enumerator.level > MAX_DEPTH || LargeFileScanner.SKIPPED_FOLDERS.contains(url.lastPathComponent)
+                || PathTools.isDirectory(url.path + "/.git") {
+                enumerator.skipDescendants()
+            } else if enumerator.level <= PROGRESS_DEPTH {
+                progress?("Duplicates: " + PathTools.abbreviate(url.path, home: options.home))
+            }
+        } else if values.isRegularFile == true, let size = values.fileSize, Int64(size) >= options.duplicateMinBytes {
+            bySize[Int64(size), default: []].append(Candidate(path: url.path, modified: values.contentModificationDate))
         }
     }
 
     /// Groups of really identical files among candidates of one size, each with its full hash.
     private static func identicalGroups(
-        _ candidates: [Candidate], size: Int64, progress: Scanner.Progress?, options: ScanOptions
+        _ candidates: [Candidate], size: Int64, progress: Scanner.Progress?, options: ScanOptions, isCancelled: () -> Bool
     ) -> [([DuplicateCopy], String)] {
         // The same file under two names (hard link) is not a duplicate: deleting a name frees nothing.
         var seenIDs = Set<FileID>()
@@ -113,8 +136,11 @@ public enum DuplicateScanner {
         }
         var sampled: [String: [Candidate]] = [:]
         for candidate in distinct {
+            if isCancelled() {
+                return []
+            }
             progress?("Comparing " + PathTools.abbreviate(candidate.path, home: options.home))
-            if let key = sampleHash(candidate.path, size: size) {
+            if let key = autoreleasepool(invoking: { sampleHash(candidate.path, size: size) }) {
                 sampled[key, default: []].append(candidate)
             }
         }
@@ -122,7 +148,10 @@ public enum DuplicateScanner {
         for sameSample in sampled.values where sameSample.count > 1 {
             var full: [String: [Candidate]] = [:]
             for candidate in sameSample {
-                if let key = fullHash(candidate.path) {
+                if isCancelled() {
+                    return []
+                }
+                if let key = autoreleasepool(invoking: { fullHash(candidate.path) }) {
                     full[key, default: []].append(candidate)
                 }
             }
@@ -182,37 +211,45 @@ public enum DuplicateScanner {
         return lstat(path, &info) == 0 ? Int64(info.st_size) : nil
     }
 
-    /// First and last megabyte plus the size. Cheap, and it rules out most files of the same size.
+    /// Start, middle and end plus nothing else. Cheap, and it rules out most files of the same size.
     private static func sampleHash(_ path: String, size: Int64) -> String? {
-        guard let handle = FileHandle(forReadingAtPath: path) else {
-            return nil
+        if size <= 3 * SAMPLE_BYTES {
+            return digest(path, ranges: [(0, size)])
         }
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        do {
-            hasher.update(data: try handle.read(upToCount: SAMPLE_BYTES) ?? Data())
-            if size > Int64(SAMPLE_BYTES) {
-                try handle.seek(toOffset: UInt64(max(size - Int64(SAMPLE_BYTES), 0)))
-                hasher.update(data: try handle.read(upToCount: SAMPLE_BYTES) ?? Data())
-            }
-        } catch {
-            return nil
-        }
-        return hex(hasher.finalize())
+        return digest(path, ranges: [(0, SAMPLE_BYTES), ((size - SAMPLE_BYTES) / 2, SAMPLE_BYTES), (size - SAMPLE_BYTES, SAMPLE_BYTES)])
     }
 
     static func fullHash(_ path: String) -> String? {
-        guard let handle = FileHandle(forReadingAtPath: path) else {
+        return digest(path, ranges: [(0, Int64.max)])
+    }
+
+    /// SHA-256 of the given byte ranges, read through one buffer that is reused. No Foundation `Data` per chunk, so memory stays flat
+    /// however big the file is. The reads skip the system file cache: a whole-disk search must not push everything else out of it.
+    private static func digest(_ path: String, ranges: [(offset: Int64, length: Int64)]) -> String? {
+        let descriptor = open(path, O_RDONLY)
+        guard descriptor >= 0 else {
             return nil
         }
-        defer { try? handle.close() }
+        defer { close(descriptor) }
+        _ = fcntl(descriptor, F_NOCACHE, 1)
+        let buffer = UnsafeMutableRawBufferPointer.allocate(byteCount: CHUNK_BYTES, alignment: 16)
+        defer { buffer.deallocate() }
         var hasher = SHA256()
-        do {
-            while let chunk = try handle.read(upToCount: CHUNK_BYTES), !chunk.isEmpty {
-                hasher.update(data: chunk)
+        for range in ranges {
+            var offset = range.offset
+            var left = range.length
+            while left > 0 {
+                let count = pread(descriptor, buffer.baseAddress, Int(min(left, Int64(CHUNK_BYTES))), off_t(offset))
+                if count < 0 {
+                    return nil
+                }
+                if count == 0 {
+                    break
+                }
+                hasher.update(bufferPointer: UnsafeRawBufferPointer(rebasing: buffer[0..<count]))
+                offset += Int64(count)
+                left -= Int64(count)
             }
-        } catch {
-            return nil
         }
         return hex(hasher.finalize())
     }

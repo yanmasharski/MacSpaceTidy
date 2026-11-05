@@ -232,6 +232,7 @@ final class TuiApp {
         let chosen = Set(SharedSettings.extraScanDisks).intersection(usable)
         let next = usable.first { !chosen.contains($0) }
         SharedSettings.extraScanDisks = next.map { usable.filter { path in chosen.contains(path) } + [$0] } ?? []
+        SharedSettings.duplicateScanDisks = SharedSettings.extraScanDisks
         options = ScanOptions.standard()
         let names = SharedSettings.extraScanDisks.map { ($0 as NSString).lastPathComponent }
         message = names.isEmpty

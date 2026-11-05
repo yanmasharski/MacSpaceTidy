@@ -24,8 +24,8 @@ public enum Scanner {
         let ignored = IgnoreList.read(options: options) ?? []
         var items: [String: ScanItem] = [:]
         let catalogCategories = ItemCategory.allCases.filter { category in catalog.entries.contains { $0.category == category } }
-        let laterCategories: [ItemCategory] = [.alreadyMoved, .largeUnknown, .downloads, .leftovers, .projects, .duplicates]
-            + (options.usesSystemTools ? [.simulators] : [])
+        let laterCategories: [ItemCategory] = [.alreadyMoved, .largeUnknown, .downloads, .leftovers, .projects]
+            + (options.scansDuplicates ? [.duplicates] : []) + (options.usesSystemTools ? [.simulators] : [])
         var pending = Set(catalogCategories + laterCategories)
 
         func sortedItems() -> [ScanItem] {
@@ -92,10 +92,12 @@ public enum Scanner {
         }
         finish([.simulators])
         // The slowest block, so it comes last: it reads whole files.
-        for item in DuplicateScanner.items(options: options, ignored: ignored, progress: progress) {
-            items[item.path] = item
+        if options.scansDuplicates {
+            for item in DuplicateScanner.items(options: options, ignored: ignored, progress: progress) {
+                items[item.path] = item
+            }
+            finish([.duplicates])
         }
-        finish([.duplicates])
         return ScanReport(disk: disk, items: sortedItems(), problems: problems)
     }
 

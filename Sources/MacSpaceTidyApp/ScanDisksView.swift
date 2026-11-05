@@ -1,7 +1,7 @@
 import MacSpaceTidyCore
 import SwiftUI
 
-/// A list of connected disks, one checkbox each. Every ticked disk is also searched for large files and duplicates.
+/// A list of connected disks, one checkbox each. Every ticked disk is also searched for large files.
 /// Shown in the main window, so the choice is easy to find. Applies on the next scan.
 struct ScanDisksView: View {
     @Bindable var model: AppModel
@@ -11,7 +11,7 @@ struct ScanDisksView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Extra scan: other disks", systemImage: "externaldrive.badge.plus")
                     .font(.headline)
-                Text("Large files and duplicates are always searched on this Mac. Tick any disks you want searched too. Takes effect on the next scan.")
+                Text("Large files are always searched on this Mac. Tick any disks you want searched too. Takes effect on the next scan.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 ForEach(model.diskChoices) { disk in

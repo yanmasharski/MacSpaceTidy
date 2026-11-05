@@ -113,11 +113,26 @@ struct DuplicateScannerTests {
 
         #expect(DuplicateScanner.items(options: options).isEmpty)
 
-        options.extraVolumes = [temp.sub("Volumes/Backup")]
+        options.duplicateVolumes = [temp.sub("Volumes/Backup")]
         let items = DuplicateScanner.items(options: options)
 
         #expect(items.count == 1)
         #expect(items[0].duplicateCopies.count == 2)
         #expect(items[0].duplicateCopies.contains { $0.path == outside && $0.diskName == "Backup" })
+    }
+
+    @Test func aCancelledSearchReturnsNothingAndTheMainScanCanLeaveDuplicatesOut() throws {
+        let temp = try TempFolder()
+        defer { temp.remove() }
+        var options = try options(for: temp)
+        try temp.makeFile("home/Movies/a.mov", bytes: DuplicateScannerTests.BYTES)
+        try temp.makeFile("home/Documents/b.mov", bytes: DuplicateScannerTests.BYTES)
+
+        #expect(DuplicateScanner.items(options: options, isCancelled: { true }).isEmpty)
+        #expect(DuplicateScanner.items(options: options).count == 1)
+
+        options.scansDuplicates = false
+        let report = try Scanner.scan(catalog: Catalog(entries: []), options: options)
+        #expect(report.items(in: .duplicates).isEmpty)
     }
 }

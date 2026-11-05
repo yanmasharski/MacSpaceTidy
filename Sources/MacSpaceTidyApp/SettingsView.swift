@@ -25,12 +25,12 @@ struct SettingsView: View {
                     ))
                 }
                 Text(model.diskChoices.contains { $0.problem == nil }
-                    ? "Large files and duplicates are searched on this Mac. Tick a disk to search it too. Off by default; it reads many files, so the next scan takes longer."
-                    : "No other disk is connected. Large files and duplicates are searched on this Mac.")
+                    ? "Large files are searched on this Mac. Tick a disk to search it too. Off by default; it reads many files, so the next scan takes longer."
+                    : "No other disk is connected. Large files are searched on this Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } header: {
-                Text("Also search these disks")
+                Text("Also search these disks for large files")
             }
         }
         .formStyle(.grouped)

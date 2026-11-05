@@ -5,7 +5,7 @@ public struct ScanOptions: Sendable {
     public static let LARGE_UNKNOWN_BYTES: Int64 = 1_000_000_000
     /// Single files of yours at least this big are listed in "Large files and folders".
     public static let LARGE_FILE_BYTES: Int64 = 500_000_000
-    /// Identical files are searched among files of at least this size.
+    /// Identical files are searched among files of at least this size. Smaller files free little and cost most of the search time.
     public static let DUPLICATE_MIN_BYTES: Int64 = 50_000_000
     /// Children of a `/*` pattern smaller than this are hidden as noise.
     public static let MIN_CHILD_ITEM_BYTES: Int64 = 1_000_000
@@ -23,6 +23,10 @@ public struct ScanOptions: Sendable {
     public var duplicateMinBytes: Int64
     /// External disks the user chose to search for large files and duplicates too. Empty unless chosen.
     public var extraVolumes: [String]
+    /// External disks the user chose for the separate duplicate search. Empty unless chosen.
+    public var duplicateVolumes: [String]
+    /// False when the duplicate search runs on its own (the app). It reads whole files, so it is not part of the main scan then.
+    public var scansDuplicates: Bool
     public var minChildItemBytes: Int64
     /// Run `simctl` and `tmutil`. Tests turn it off.
     public var usesSystemTools: Bool
@@ -45,6 +49,8 @@ public struct ScanOptions: Sendable {
         self.largeFileBytes = ScanOptions.LARGE_FILE_BYTES
         self.duplicateMinBytes = ScanOptions.DUPLICATE_MIN_BYTES
         self.extraVolumes = []
+        self.duplicateVolumes = []
+        self.scansDuplicates = true
         self.minChildItemBytes = ScanOptions.MIN_CHILD_ITEM_BYTES
         self.usesSystemTools = usesSystemTools
         self.measuresMovedItems = false
@@ -96,6 +102,8 @@ public struct ScanOptions: Sendable {
         // Only disks the user chose, and only writable ones: a copy found there must be removable.
         let chosen = Set(SharedSettings.extraScanDisks)
         options.extraVolumes = options.disks.choices(internalPath: home).map(\.path).filter { chosen.contains($0) && access($0, W_OK) == 0 }
+        let duplicateChosen = Set(SharedSettings.duplicateScanDisks)
+        options.duplicateVolumes = options.disks.choices(internalPath: home).map(\.path).filter { duplicateChosen.contains($0) && access($0, W_OK) == 0 }
         options.appFolders = ["/Applications", "/System/Applications", (home as NSString).appendingPathComponent("Applications")]
         return options
     }

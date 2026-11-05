@@ -170,13 +170,15 @@ Safety rules:
 - Single files of 500 MB or more in Desktop, Documents, Movies, Music, Pictures, and Downloads go to the same category.
   They are your own data: never checked by default, always to the Trash, or moved to an external disk.
   Files inside a git repository, inside an app or library package, hidden files, and links are skipped.
-- Duplicate files: files of 50 MB or more with the same content (size, then start and end, then SHA-256 of everything)
+- Duplicate files: files of 50 MB or more with the same content (size, then start/middle/end samples, then SHA-256 of everything)
   in the same folders. One group is one row. The user picks the copy that stays (the oldest is suggested); ticking the box
   sends the other copies to the Trash. An unticked group keeps all copies. Hard links and links are not duplicates.
   Right before the Trash the kept copy is hashed again and must still be identical. Duplicates are not a disk bar segment.
-  The user may choose external disks to search too (Settings, or `e` in the terminal). None is chosen by default, so
-  large files and duplicates are searched on this Mac only. Only writable disks count. Time Machine backups, `.Trashes`,
-  and the tool's own folder are skipped.
+  In the app the duplicate search is not part of the main scan: it is a separate block with its own button, a Stop button,
+  and a checkbox per external disk (this Mac is always searched). A new main scan drops the found groups. Memory stays flat:
+  files are read through one reused buffer, and each directory entry and file runs in its own autorelease pool.
+  Large files have their own disk choice (Settings, or `e` in the terminal; the terminal sets both lists).
+  None is chosen by default. Only writable disks count. Time Machine backups, `.Trashes`, and the tool's own folder are skipped.
 
 ### How things are deleted
 

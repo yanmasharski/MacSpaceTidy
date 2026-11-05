@@ -37,6 +37,18 @@ final class AppModel {
             }
         }
     }
+    /// External disks the separate duplicate search covers. This Mac is always searched.
+    var duplicateDisks: Set<String> {
+        didSet {
+            if !isDemo {
+                SharedSettings.duplicateScanDisks = duplicateDisks.sorted()
+            }
+        }
+    }
+    var isScanningDuplicates = false
+    var duplicateStep = ""
+    /// True once a duplicate search of the current report has finished, so "none found" can be told from "not searched yet".
+    var hasSearchedDuplicates = false
     /// External disk for moves. Chosen once, remembered.
     var moveDiskRoot: String? {
         didSet {
@@ -51,11 +63,14 @@ final class AppModel {
     private var cancelFlag = CancelFlag()
     /// A newer scan makes the result of an older external scan stale.
     private var scanGeneration = 0
+    private var duplicateGeneration = 0
+    private var duplicateCancel = CancelFlag()
 
     init() {
         deleteMode = SharedSettings.deleteMode
         moveDiskRoot = SharedSettings.moveDiskRoot
         extraScanDisks = Set(SharedSettings.extraScanDisks)
+        duplicateDisks = Set(SharedSettings.duplicateScanDisks)
         do {
             catalog = try Catalog.loadBundled()
         } catch {
@@ -115,13 +130,19 @@ final class AppModel {
         }
         isScanning = true
         scanGeneration += 1
+        stopDuplicateSearch()
+        hasSearchedDuplicates = false
         scanStep = ""
         errorText = nil
         plan = PlanSelection()
         seenItemIds = []
+        // Duplicates are a separate search: it reads whole files and would hold the main scan for a long time.
+        var scanOptions = ScanOptions.standard()
+        scanOptions.scansDuplicates = false
+        let options = scanOptions
         Task.detached {
             do {
-                let report = try Scanner.scan(catalog: catalog, options: .standard(), progress: { step in
+                let report = try Scanner.scan(catalog: catalog, options: options, progress: { step in
                     Task { @MainActor in self.scanStep = step }
                 }, onPartial: { partial, pending in
                     Task { @MainActor in self.showPartial(partial, pending: pending) }
@@ -131,6 +152,60 @@ final class AppModel {
                 await self.failScan(error)
             }
         }
+    }
+
+    /// The separate duplicate search: this Mac plus the chosen disks. Its groups join the current report.
+    func scanDuplicates() {
+        guard !isScanning, !isScanningDuplicates, report != nil else {
+            return
+        }
+        isScanningDuplicates = true
+        duplicateStep = ""
+        pendingCategories.insert(.duplicates)
+        duplicateCancel = CancelFlag()
+        let flag = duplicateCancel
+        let generation = duplicateGeneration
+        let options = ScanOptions.standard()
+        Task.detached {
+            let ignored = IgnoreList.read(options: options) ?? []
+            let items = DuplicateScanner.items(options: options, ignored: ignored, progress: { step in
+                Task { @MainActor in self.duplicateStep = step }
+            }, isCancelled: { flag.isSet })
+            await self.finishDuplicates(items, cancelled: flag.isSet, generation: generation)
+        }
+    }
+
+    func cancelDuplicates() {
+        duplicateCancel.set()
+    }
+
+    /// A new main scan drops the old groups: files may be gone, and the duplicate search is started again by hand.
+    private func stopDuplicateSearch() {
+        duplicateCancel.set()
+        duplicateGeneration += 1
+        isScanningDuplicates = false
+        pendingCategories.remove(.duplicates)
+    }
+
+    private func finishDuplicates(_ items: [ScanItem], cancelled: Bool, generation: Int) {
+        guard generation == duplicateGeneration else {
+            return
+        }
+        isScanningDuplicates = false
+        pendingCategories.remove(.duplicates)
+        guard !cancelled, let report else {
+            return
+        }
+        self.report = merged(report, duplicates: items)
+        hasSearchedDuplicates = true
+        plan.addDefaults(for: items.filter { seenItemIds.insert($0.id).inserted })
+    }
+
+    private func merged(_ base: ScanReport, duplicates: [ScanItem]) -> ScanReport {
+        let items = (base.items.filter { $0.category != .duplicates } + duplicates).sorted { first, second in
+            first.size.bytes != second.size.bytes ? first.size.bytes > second.size.bytes : first.title < second.title
+        }
+        return ScanReport(disk: base.disk, items: items, problems: base.problems, externalDisks: base.externalDisks)
     }
 
     /// Hides the item for good: it is never listed or cleaned again. The user undoes it by editing the ignore file.
@@ -243,7 +318,9 @@ final class AppModel {
         guard generation == scanGeneration else {
             return
         }
-        report = newReport
+        // The external scan started from a report without duplicates; do not lose the groups found meanwhile.
+        let found = report?.items.filter { $0.category == .duplicates } ?? []
+        report = found.isEmpty ? newReport : merged(newReport, duplicates: found)
         isScanningExternal = !isFinal
     }
 

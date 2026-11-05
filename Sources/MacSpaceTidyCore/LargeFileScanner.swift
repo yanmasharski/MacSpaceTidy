@@ -27,7 +27,11 @@ public enum LargeFileScanner {
 
     /// True for a path inside a searched folder, outside git repositories and the skipped folders.
     static func isSearched(_ path: String, options: ScanOptions) -> Bool {
-        return searchedRoots(options: options).contains { root in
+        return isSearched(path, roots: searchedRoots(options: options))
+    }
+
+    static func isSearched(_ path: String, roots: [String]) -> Bool {
+        return roots.contains { root in
             PathTools.isSameOrInside(path, folder: root) && path != root && !isInsideRepository(path, root: root)
                 && !path.dropFirst(root.count).split(separator: "/").contains { SKIPPED_FOLDERS.contains(String($0)) }
         }
