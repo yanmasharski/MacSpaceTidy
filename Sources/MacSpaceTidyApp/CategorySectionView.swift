@@ -57,18 +57,49 @@ struct CategorySectionView: View {
             if isExpanded {
                 Divider()
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(items) { item in
-                        if item.category == .duplicates {
-                            DuplicateGroupView(model: model, item: item)
-                        } else {
-                            ItemRowView(model: model, item: item, largestBytes: largestBytes)
+                    ForEach(diskGroups) { group in
+                        if let title = group.title {
+                            Text(title)
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 10)
+                                .padding(.top, 10)
+                                .padding(.bottom, 4)
                         }
-                        Divider().padding(.leading, 58)
+                        ForEach(group.items) { item in
+                            if item.category == .duplicates {
+                                DuplicateGroupView(model: model, item: item)
+                            } else {
+                                ItemRowView(model: model, item: item, largestBytes: largestBytes)
+                            }
+                            Divider().padding(.leading, 58)
+                        }
                     }
                 }
             }
         }
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private struct DiskGroup: Identifiable {
+        let title: String?
+        let items: [ScanItem]
+        var id: String { title ?? "" }
+    }
+
+    /// Large files are grouped by disk: this Mac first, then each external disk. Other categories stay one list.
+    private var diskGroups: [DiskGroup] {
+        guard category == .largeUnknown else {
+            return [DiskGroup(title: nil, items: items)]
+        }
+        let disks = ExternalDisks()
+        let roots = items.map { disks.volumeRoot(of: $0.path) }
+        let external = Array(Set(roots.compactMap { $0 })).sorted()
+        var groups = [DiskGroup(title: "This Mac", items: zip(items, roots).filter { $0.1 == nil }.map(\.0))]
+        for root in external {
+            groups.append(DiskGroup(title: (root as NSString).lastPathComponent, items: zip(items, roots).filter { $0.1 == root }.map(\.0)))
+        }
+        return groups.filter { !$0.items.isEmpty }
     }
 
     private func checkState(selected: Int, total: Int) -> CheckboxView.State {
